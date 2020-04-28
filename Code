@@ -150,15 +150,21 @@ def ftype(L): #Meme fonction de fcategory mais avec les tags
 
     return t1
 
-def suggestion(L):
+
+
+def suggestion(user,L,nbre):
     
     cat=fcategory(L)
     tag=ftags(L)
     typ=ftype(L)
     L=[int("".join(x)) for x in L]
+    #On va hierarchiser les videos selon l'utilisateur
     tiers1=[]
     tiers2=[]
     tiers3=[]
+    
+    ### Suggestion basée sur la base de données ### 
+    
     for i in range (len(cat)):
         
         for j in range(len(tag)):
@@ -187,5 +193,92 @@ def suggestion(L):
                 tiers3.append(row[0])
             row = cursor.fetchone()
     
+    #print('t1 ',tiers1)
+    #print('t2 ',tiers2)
+    #print('t3 ',tiers3)
     
-    return 0
+    
+    ### Suggestions basée sur le visionnage des autres utilisateurs ###
+    n=len(L)
+    taux=round((3/4)*n) #sert à fixer un minimum de vidéos en commun 
+    vid=[]
+    for i in range(n):
+        idother=[]
+        cursor.execute('SELECT userid FROM videosread WHERE videoid =' + str(L[i]) )
+        row = cursor.fetchone()
+        while row :
+            if int(row[0]) != int(user) :
+                idother.append(row[0])
+            row = cursor.fetchone()
+        
+        for j in range (len(idother)):
+            idvid=[]
+            cursor.execute('SELECT videoid FROM videosread WHERE userid =' + str(idother[j]))
+            row = cursor.fetchone()
+            while row :
+                idvid.append(row[0])
+                row = cursor.fetchone()
+
+            a=0
+            for k in range(n):
+                if idvid.count(L[k])!=0:
+                    a+=1
+                    idvid.remove(L[k])
+            if a>=taux:
+                vid.extend(idvid)
+    vid=list(set(vid))
+    
+    ### assemblage des deux ###
+    
+    for i in range (len(vid)):
+        if tiers1.count(vid[i])!=0:
+            a=vid[i]
+            tiers1.remove(a)
+            tiers1.insert(0, a)
+        else:
+            if tiers2.count(vid[i])!=0:
+                a=vid[i]
+                tiers2.remove(a)
+                tiers1.append(a)
+            else:
+                if tiers3.count(vid[i])!=0:
+                    a=vid[i]
+                    tiers3.remove(a)
+                    tiers2.append(a)
+                else:
+                    a=vid[i]
+                    tiers3.append(a)
+                    
+    #print('t1 ',tiers1)
+    #print('t2 ',tiers2)
+    #print('t3 ',tiers3)
+    res=[]
+    a=0
+    l1=len(tiers1)
+    l2=len(tiers2)
+    while len(res)<nbre:
+        if a<l1:
+            res.append(tiers1[a])
+            a+=1
+        else:
+            if a-l1<l2:
+                res.append(tiers2[a-l1])
+                a+=1
+            else:
+                res.append(tiers3[a-l1-l2])
+                a+=1
+    
+    return res
+
+
+
+nbre=int(input('Nombre de suggestion ='))
+
+print(suggestion(x,vr,nbre))
+
+
+
+
+
+
+connection.close()
