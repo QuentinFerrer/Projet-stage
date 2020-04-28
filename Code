@@ -1,0 +1,22 @@
+import pymysql.cursors
+
+
+connection = pymysql.connect(host='localhost',
+                             user='root',
+                             port='',
+                             password='',
+                             database='stage')
+
+x=str(input("id de la personne ="))
+#Initialisation des vidéos regardés pour l'user x
+vr=[]
+cursor = connection.cursor()
+cursor.execute("SELECT videoid FROM videosread WHERE userid=" + x)
+row = cursor.fetchone()
+while row:
+    #print (str(row[0]))
+    vr.append(str(row[0]))
+    row = cursor.fetchone()
+#print(vr)
+
+#Fin initialisation
