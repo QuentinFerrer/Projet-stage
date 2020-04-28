@@ -20,4 +20,132 @@ while row:
 #print(vr)
 
 #Fin initialisation
-#test
+
+
+def fcategory(L): #Couteux pour l'instant
+    n=len(L)
+    c=[] #Liste ou il y a toutes les catégories
+    c1=[] #Liste ou les catégories n'apparaissent qu'une seule fois
+    c2=[] #Liste qui va compter le nombre de fois qu'apparait chaque catégorie, utile pour les trier
+    
+    for i in range (n): #Ajout des catégories
+        cursor.execute("SELECT category FROM videos WHERE id=" + L[i])
+        row = cursor.fetchone()
+        c.append(row[0])
+        if row[0] not in c1:
+            c1.append(row[0])
+    
+    n=len(c1)
+    if n>1:
+        for i in range (n):
+            mot=c1[i]
+            c2.append(c.count(mot))
+        
+        for i in range (n-1): #Trie les catégories les plus regardées
+            a=i
+            b=i+1
+            while c2[b]>c2[a] and a>=0:
+                poids=c2[b]
+                c2[b]=c2[a]
+                c2[a]=poids
+                mot=c1[b]
+                c1[b]=c1[a]
+                c1[a]=mot
+                b=a
+                a=b-1
+    
+    return c1
+
+
+def separationtags(L):
+    n=len(L)
+    mots=[]
+    i=0
+    j=1
+    arret = 0
+    while arret ==0:
+        if L[j]!=',' and j < n:
+            j+=1
+        else:
+            mots.append(L[i:j])
+            i=j+1
+            j=i+1
+        if j==n:
+            mots.append(L[i:j])
+            arret=1
+    return mots
+       
+     
+def ftags(L): #Meme fonction de fcategory mais avec les tags
+    n=len(L)
+    t=[] 
+    t1=[] 
+    t2=[] 
+    
+    for i in range (n): #Ajout des catégories
+        cursor.execute("SELECT tags FROM videos WHERE id=" + L[i])
+        row = cursor.fetchone()
+        R=separationtags(row[0])
+        for j in range (len(R)):
+            t.append(R[j])
+            if R[j] not in t1:
+                t1.append(R[j])
+    
+    n=len(t1)
+    if n>1:
+        for i in range (n):
+            mot=t1[i]
+            t2.append(t.count(mot))
+ 
+        
+        for i in range (n-1): #Trie les catégories les plus regardées
+            a=i
+            b=i+1
+            while t2[b]>t2[a] and a>=0:
+                poids=t2[b]
+                t2[b]=t2[a]
+                t2[a]=poids
+                mot=t1[b]
+                t1[b]=t1[a]
+                t1[a]=mot
+                b=a
+                a=b-1
+
+    return t1
+
+def ftype(L): #Meme fonction de fcategory mais avec les tags
+    n=len(L)
+    t=[] 
+    t1=[] 
+    t2=[] 
+    
+    for i in range (n): #Ajout des catégories
+        cursor.execute("SELECT type FROM videos WHERE id=" + L[i])
+        row = cursor.fetchone()
+        R=separationtags(row[0])
+        for j in range (len(R)):
+            t.append(R[j])
+            if R[j] not in t1:
+                t1.append(R[j])
+    
+    n=len(t1)
+    if n>1:
+        for i in range (n):
+            mot=t1[i]
+            t2.append(t.count(mot))
+ 
+        
+        for i in range (n-1): #Trie les catégories les plus regardées
+            a=i
+            b=i+1
+            while t2[b]>t2[a] and a>=0:
+                poids=t2[b]
+                t2[b]=t2[a]
+                t2[a]=poids
+                mot=t1[b]
+                t1[b]=t1[a]
+                t1[a]=mot
+                b=a
+                a=b-1
+
+    return t1
