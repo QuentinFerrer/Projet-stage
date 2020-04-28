@@ -149,3 +149,43 @@ def ftype(L): #Meme fonction de fcategory mais avec les tags
                 a=b-1
 
     return t1
+
+def suggestion(L):
+    
+    cat=fcategory(L)
+    tag=ftags(L)
+    typ=ftype(L)
+    L=[int("".join(x)) for x in L]
+    tiers1=[]
+    tiers2=[]
+    tiers3=[]
+    for i in range (len(cat)):
+        
+        for j in range(len(tag)):
+            
+            for k in range(len(typ)):
+                cursor.execute('SELECT id FROM videos WHERE category LIKE \'%' + cat[i] + '%\' and tags LIKE \'%' + tag[j] + '%\' and type LIKE \'%' + typ[k] + '%\'')
+                row = cursor.fetchone()
+                while row :
+                    if row[0] not in tiers1 and row[0] not in tiers2 and row[0] not in L:
+                        tiers2.append(row[0])
+                    row = cursor.fetchone()
+                    
+                    
+            cursor.execute('SELECT id FROM videos WHERE category LIKE \'%' + cat[i] + '%\' and tags LIKE \'%' + tag[j] + '%\'')
+            row = cursor.fetchone()
+            while row :
+                if row[0] not in tiers2 and row[0] not in tiers1 and row[0] not in L :
+                    tiers2.append(row[0])
+                row = cursor.fetchone()
+                
+                
+        cursor.execute('SELECT id FROM videos WHERE category LIKE \'%' + cat[i] + '%\'')
+        row = cursor.fetchone()
+        while row :
+            if row[0] not in tiers2 and row[0] not in tiers1 and row[0] not in tiers3 and row[0] not in L :
+                tiers3.append(row[0])
+            row = cursor.fetchone()
+    
+    
+    return 0
