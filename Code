@@ -1,6 +1,6 @@
 import pymysql.cursors
 import numpy as np
-
+from datetime import timedelta
 
 connection = pymysql.connect(host='localhost',
                              user='root',
@@ -22,7 +22,21 @@ while row:
 #print(len(vr))
 ###  Fin initialisation ###
 
-def ListFtoI(L):
+#test=datetime.timedelta()
+
+def ConvStrTemps(L):
+    n=len(L)
+    temps=[]
+    for i in range (n):
+        if len(L[i])==5:
+            temps.append(timedelta(minutes=10*int(L[i][0])+int(L[i][1]),seconds=10*int(L[i][3])+int(L[i][4])))
+        if len(L[i])==8:
+            temps.append(timedelta(hours=10*int(L[i][0])+int(L[i][1]),minutes=10*int(L[i][3])+int(L[i][4]),seconds=10*int(L[i][6])+int(L[i][7])))
+    return temps
+
+    
+
+def ConvFloatInt(L):
     n=len(L)
     for i in range (n):
         L[i]=int(L[i])
@@ -230,7 +244,7 @@ def suggestiontag(L):
     return tiers2, tiers3
 
 
-def tritags(Lu,Ls): #rajouter une étude selon le temps en moyenne de vidéos regardés
+def tri(Lu,Ls): #rajouter une étude selon le temps en moyenne de vidéos regardés
     n=len(Ls)
     tab=np.zeros((2,n))
     tab[0,:]=Ls
@@ -250,17 +264,59 @@ def tritags(Lu,Ls): #rajouter une étude selon le temps en moyenne de vidéos re
             v+=t.count(R[j])
             row = cursor.fetchone()
         tab[1,i]=v
+    
     for i in range (n):
         a=i
         b=a+1
         while b<n and tab[1,b]>tab[1,a] and a>=0 :
             c=int(tab[0,b])
             d=int(tab[1,b])
+            e=temps2[b]
             tab[:,b]=tab[:,a]
+            temps2[b]=temps2[a]
             tab[0,a]=c
             tab[1,a]=d
+            temps2[a]=e
             b=a
             a=a-1
+    
+    Temps=[]
+    
+    for i in range (len(Lu)):
+        cursor.execute("SELECT length FROM videos WHERE id=" + str(Lu[i]))
+        row = cursor.fetchone()
+        while row:
+            #print (str(row[0]))
+            Temps.append(str(row[0]))
+            row = cursor.fetchone()
+    moy=np.mean(ConvStrTemps(Temps))
+    
+    temps2=[]
+    for i in range (len(Ls)):
+        cursor.execute("SELECT length FROM videos WHERE id=" + str(Ls[i]))
+        row = cursor.fetchone()
+        while row:
+            #print (str(row[0]))
+            temps2.append(str(row[0]))
+            row = cursor.fetchone()
+    
+    temps2=ConvStrTemps(temps2)
+    
+    for i in range (n):
+        a=i
+        b=a+1
+        while b<n and a>=0 and tab[1,a]==tab[1,b] and np.abs(temps2[b]-moy)<np.abs(temps2[a]-moy):
+            c=int(tab[0,b])
+            d=int(tab[1,b])
+            e=temps2[b]
+            tab[:,b]=tab[:,a]
+            temps2[b]=temps2[a]
+            tab[0,a]=c
+            tab[1,a]=d
+            temps2[a]=e
+            b=a
+            a=a-1
+            
     return list(tab[0,:])
             
             
@@ -296,6 +352,102 @@ def suggestionusers(user,L):
     
     return vid     
 
+def triLang(L,T1,T2,T3):
+    T0=[]
+    n=len(L)
+    c=[] #Liste ou il y a toutes les catégories
+    c1=[] #Liste ou les catégories n'apparaissent qu'une seule fois
+    c2=[] #Liste qui va compter le nombre de fois qu'apparait chaque catégorie, utile pour les trier
+    
+    for i in range (n): #Ajout des catégories
+        cursor.execute("SELECT lang FROM videos WHERE id=" + L[i])
+        row = cursor.fetchone()
+        c.append(row[0])
+        if row[0] not in c1:
+            c1.append(row[0])
+    
+    n=len(c1)
+    if n>1:
+        for i in range (n):
+            mot=c1[i]
+            c2.append(c.count(mot))
+        
+        for i in range (n-1): #Trie les catégories les plus regardées
+            a=i
+            b=i+1
+            while c2[b]>c2[a] and a>=0:
+                poids=c2[b]
+                c2[b]=c2[a]
+                c2[a]=poids
+                mot=c1[b]
+                c1[b]=c1[a]
+                c1[a]=mot
+                b=a
+                a=b-1
+        c3=[]
+        c3.append(c1[0])
+        i=0
+        while i< (len(T1)): #Ajout des catégories
+            cursor.execute("SELECT lang FROM videos WHERE id=" + str(T1[i]))
+            row = cursor.fetchone()
+            if row[0] in c3:
+                T0.append(T1[i])
+                T1.remove(T1[i])
+            else:
+                i+=1
+        i=0
+        while i< (len(T2)): #Ajout des catégories
+            cursor.execute("SELECT lang FROM videos WHERE id=" + str(T2[i]))
+            row = cursor.fetchone()
+            if row[0] in c3:
+                T1.append(T2[i])
+                T2.remove(T2[i])
+            else:
+                i+=1
+        i=0
+        while i< (len(T3)): #Ajout des catégories
+            cursor.execute("SELECT lang FROM videos WHERE id=" + str(T3[i]))
+            row = cursor.fetchone()
+            if row[0] in c3:
+                T3.append(T3[i])
+                T3.remove(T3[i])
+            else:
+                i+=1
+        
+    else:
+        i=0
+        while i< (len(T1)): #Ajout des catégories
+            cursor.execute("SELECT lang FROM videos WHERE id=" + str(T1[i]))
+            row = cursor.fetchone()
+            if row[0] in c1:
+                T0.append(T1[i])
+                T1.remove(T1[i])
+            else:
+                i+=1
+        i=0
+        while i< (len(T2)): #Ajout des catégories
+            cursor.execute("SELECT lang FROM videos WHERE id=" + str(T2[i]))
+            row = cursor.fetchone()
+            if row[0] in c1:
+                T1.append(T2[i])
+                T2.remove(T2[i])
+            else:
+                i+=1
+        i=0
+        while i< (len(T3)): #Ajout des catégories
+            cursor.execute("SELECT lang FROM videos WHERE id=" + str(T3[i]))
+            row = cursor.fetchone()
+            if row[0] in c1:
+                T2.append(T3[i])
+                T3.remove(T3[i])
+                print('oui')
+            else:
+                i+=1
+    return T0,T1,T2,T3
+        
+        
+    
+
 
 def suggestion(user,L,nbre):
     cat,t=fcategory(L)
@@ -325,18 +477,22 @@ def suggestion(user,L,nbre):
             else:
                 a=vid[i]
                 tiers3.append(a)
-    tiers1=ListFtoI(tritags(L,tiers1))
-    tiers2=ListFtoI(tritags(L,tiers2))
-    tiers3=ListFtoI(tritags(L,tiers3))
+    tiers1=ConvFloatInt(tri(L,tiers1))
+    tiers2=ConvFloatInt(tri(L,tiers2))
+    tiers3=ConvFloatInt(tri(L,tiers3))
+    tiers1,tiers2,tiers3,tiers4=triLang(L,tiers1,tiers2,tiers3)
     #print('t1=',tiers1)
     #print('t2=',tiers2)
     #print('t3=',tiers3)
+    #print('t4=',tiers4)
     
     ### Résultat selon le nombre de suggestion
     res=[]
     a=0
     l1=len(tiers1)
     l2=len(tiers2)
+    l3=len(tiers3)
+
     while len(res)<nbre:
         if a<l1:
             res.append(tiers1[a])
@@ -346,12 +502,16 @@ def suggestion(user,L,nbre):
                 res.append(tiers2[a-l1])
                 a+=1
             else:
-                res.append(tiers3[a-l1-l2])
-                a+=1
+                if a-l1-l2<l3:
+                    res.append(tiers3[a-l1-l2])
+                    a+=1
+                else:
+                    res.append(tiers4[a-l1-l2-l3])
+                    a+=1  
     return res
 
 
-    
+
 nbre=int(input('Nombre de suggestion ='))
 print(suggestion(x,vr,nbre))
 
