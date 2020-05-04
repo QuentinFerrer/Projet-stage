@@ -1,0 +1,85 @@
+import flask
+from flask import request, jsonify
+import pymysql.cursors
+import Code as co
+
+app = flask.Flask(__name__)
+app.config["DEBUG"] = True
+
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+
+@app.route('/', methods=['GET'])
+def home():
+    return '''<h1>Home</h1>
+<p>Projet en cours.</p>'''
+
+
+@app.route('/api/videos', methods=['GET'])
+def api_vid():
+    conn = pymysql.connect(host='localhost',
+                             user='root',
+                             port='',
+                             password='',
+                             database='stage')
+    conn.row_factory = dict_factory
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM videos;')
+    all_books = cur.fetchall()
+
+    return jsonify(all_books)
+
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return "<h1>404</h1><p>The resource could not be found.</p>", 404
+
+@app.route('/api/users', methods=['GET'])
+def api_user():
+    conn = pymysql.connect(host='localhost',
+                             user='root',
+                             port='',
+                             password='',
+                             database='stage')
+    conn.row_factory = dict_factory
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users;')
+    all_books = cur.fetchall()
+
+    return jsonify(all_books)
+
+@app.route('/api/suggestions', methods=['GET'])
+def api_filter():
+    i =1#query_parameters.get('id')
+
+    conn = pymysql.connect(host='localhost',
+                             user='root',
+                             port='',
+                             password='',
+                             database='stage')
+    vr=[]
+    cursor = conn.cursor()
+    cursor.execute("SELECT videoid FROM videosread WHERE userid=" + str(i))
+    row = cursor.fetchone()
+    while row:
+        vr.append(str(row[0]))
+        row = cursor.fetchone()
+    s=co.suggestion(i,vr,10)
+    conn = pymysql.connect(host='localhost',
+                             user='root',
+                             port='',
+                             password='',
+                             database='stage')
+    conn.row_factory = dict_factory
+    cur = conn.cursor()
+    cur.execute("SELECT videoid FROM videosread WHERE userid IN" + s)
+    results = cur.fetchall()
+
+    return jsonify(results)
+
+app.run()
