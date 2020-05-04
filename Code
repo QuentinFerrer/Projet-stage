@@ -2,22 +2,26 @@ import pymysql.cursors
 import numpy as np
 from datetime import timedelta
 
-connection = pymysql.connect(host='localhost',
+def connectcursor():
+    conn = pymysql.connect(host='localhost',
                              user='root',
                              port='',
                              password='',
                              database='stage')
-
+    cursor = conn.cursor()
+    return cursor
+"""
 x=str(input("id de la personne ="))
 ### Initialisation des vidéos regardés pour l'user x  ###
-vr=[]
-cursor = connection.cursor()
+vr=[]"""
+cursor =connectcursor()
+"""
 cursor.execute("SELECT videoid FROM videosread WHERE userid=" + x)
 row = cursor.fetchone()
 while row:
     #print (str(row[0]))
     vr.append(str(row[0]))
-    row = cursor.fetchone()
+    row = cursor.fetchone()"""
 #print(vr)
 #print(len(vr))
 ###  Fin initialisation ###
@@ -41,16 +45,23 @@ def ConvFloatInt(L):
         L[i]=int(L[i])
     return L
 
+def ConvIntStr(L):
+    n=len(L)
+    for i in range (n):
+        L[i]=str(L[i])
+    return L
 
 ### FOnction qui récupère des données selon une liste d'id de vidéo ###
 
-def fcategory(L): 
+def fcategory(L):
+    cursor =connectcursor()
+    #Couteux pour l'instant
     n=len(L)
     c=[] #Liste ou il y a toutes les catégories
     c1=[] #Liste ou les catégories n'apparaissent qu'une seule fois
     
     for i in range (n): #Ajout des catégories
-        cursor.execute("SELECT category FROM videos WHERE id=" + L[i])
+        cursor.execute("SELECT category FROM videos WHERE id=" + str(L[i]))
         row = cursor.fetchone()
         c.append(row[0])
         if row[0] not in c1:
@@ -86,7 +97,7 @@ def separationmots(L):
 def ftags(L): #Meme fonction de fcategory mais avec les tags
     n=len(L)
     t1=[] 
-    
+    cursor =connectcursor()
     for i in range (n): #Ajout des catégories
         cursor.execute("SELECT tags FROM videos WHERE id=" + L[i])
         row = cursor.fetchone()
@@ -100,7 +111,7 @@ def ftags(L): #Meme fonction de fcategory mais avec les tags
 def ftype(L): #Meme fonction de fcategory mais avec les types
     n=len(L)
     t1=[] 
-    
+    cursor =connectcursor()
     for i in range (n): #Ajout des catégories
         cursor.execute("SELECT type FROM videos WHERE id=" + L[i])
         row = cursor.fetchone()
@@ -116,7 +127,7 @@ def ftype(L): #Meme fonction de fcategory mais avec les types
 ### Suggestion quand il y a plusieurs catégories dans la liste de vidéos ###
     
 def suggestioncategale(L):
-    
+    cursor =connectcursor()
     cat,p=fcategory(L)
     tag=ftags(L)
     L=[int("".join(x)) for x in L]
@@ -150,6 +161,7 @@ def suggestioncategale(L):
 ### Suggestions quand il y a qu'une seule catégorie de vidéos regardées ###
     
 def suggestioncatdiff(L):
+    cursor =connectcursor()
     cat,f=fcategory(L)
     tag=ftags(L)
     L=[int("".join(x)) for x in L]
@@ -182,6 +194,7 @@ def suggestioncatdiff(L):
 ### Fonction qui trie une liste de vidéo en fonction des tags et du temps d'une liste de vidéos regardées ###
     
 def tri(Lu,Ls):
+    cursor =connectcursor()
     n=len(Ls)
     tab=np.zeros((2,n))
     tab[0,:]=Ls
@@ -245,6 +258,7 @@ def tri(Lu,Ls):
             
 ### Fonction de suggestions basée sur le visionnage des autres utilisateurs ###
 def suggestionusers(user,L,tiers2,tiers3,nbre):
+    cursor =connectcursor()
     tiers1=[]
     n=len(L)
     taux=round((4/5)*n)#sert à fixer un minimum de vidéos en commun 
@@ -337,6 +351,7 @@ def CompteID(vid,tiers2,tiers3):
 
 ### Fonction qui réajuste des groupes de vidéos selon la langue 
 def triLang(L,T1,T2,T3):
+    cursor =connectcursor()
     T0=[]
     n=len(L)
     c=[] #Liste ou il y a toutes les catégories
@@ -407,7 +422,7 @@ def triLang(L,T1,T2,T3):
         
         
 def suggestiontag(L,tiers1,tiers2,tiers3,tiers4):
-    
+    cursor =connectcursor()
     tag=ftags(L)
     L=[int("".join(x)) for x in L]
     add=[]
@@ -425,7 +440,7 @@ def suggestiontag(L,tiers1,tiers2,tiers3,tiers4):
     return tiers1,tiers2,tiers3,tiers4 
 
 def suggestiontyp(L,tiers1,tiers2,tiers3,tiers4):
-    
+    cursor =connectcursor()
     typ=ftype(L)
     L=[int("".join(x)) for x in L]
     add=[]
@@ -498,12 +513,12 @@ def suggestion(user,L,nbre):
                     a+=1
                 else:
                     res.append(tiers4[a-l1-l2-l3])
-                    a+=1  
+                    a+=1
+    res=ConvIntStr(res)
     return res
 
 
-
+"""
 nbre=int(input('Nombre de suggestion ='))
 print(suggestion(x,vr,nbre))
-
-connection.close()
+"""
