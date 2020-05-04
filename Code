@@ -12,19 +12,21 @@ def connectcursor():
     return cursor
 """
 x=str(input("id de la personne ="))
-### Initialisation des vidéos regardés pour l'user x  ###
-vr=[]"""
-cursor =connectcursor()
 """
-cursor.execute("SELECT videoid FROM videosread WHERE userid=" + x)
-row = cursor.fetchone()
-while row:
-    #print (str(row[0]))
-    vr.append(str(row[0]))
-    row = cursor.fetchone()"""
+cursor =connectcursor()
+
 #print(vr)
 #print(len(vr))
 ###  Fin initialisation ###
+def videoread(i):
+    vr=[]
+    cursor = connectcursor()
+    cursor.execute("SELECT videoid FROM videosread WHERE userid=" + str(i))
+    row = cursor.fetchone()
+    while row:
+        vr.append(str(row[0]))
+        row = cursor.fetchone()
+    return vr
 
 ### Fonction de conversion ###
 def ConvStrTemps(L):
@@ -520,5 +522,6 @@ def suggestion(user,L,nbre):
 
 """
 nbre=int(input('Nombre de suggestion ='))
+vr=videoread(x)
 print(suggestion(x,vr,nbre))
 """
