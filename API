@@ -55,20 +55,9 @@ def api_user():
 
 @app.route('/api/suggestions', methods=['GET'])
 def api_filter():
-    i =1#query_parameters.get('id')
-
-    conn = pymysql.connect(host='localhost',
-                             user='root',
-                             port='',
-                             password='',
-                             database='stage')
-    vr=[]
-    cursor = conn.cursor()
-    cursor.execute("SELECT videoid FROM videosread WHERE userid=" + str(i))
-    row = cursor.fetchone()
-    while row:
-        vr.append(str(row[0]))
-        row = cursor.fetchone()
+    
+    i = request.args.get('id')
+    vr=co.videoread(i)
     s=co.suggestion(i,vr,10)
     conn = pymysql.connect(host='localhost',
                              user='root',
@@ -77,9 +66,12 @@ def api_filter():
                              database='stage')
     conn.row_factory = dict_factory
     cur = conn.cursor()
-    cur.execute("SELECT videoid FROM videosread WHERE userid IN" + s)
-    results = cur.fetchall()
+    results=[]
+    for j in range (len(s)):
+        cur.execute("SELECT * FROM videos WHERE id =" + s[j])
+        results.append(cur.fetchone())
 
     return jsonify(results)
+    
 
 app.run()
