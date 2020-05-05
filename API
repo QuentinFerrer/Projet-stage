@@ -13,13 +13,13 @@ def dict_factory(cursor, row):
     return d
 
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET'])#http://127.0.0.1:5000
 def home():
     return '''<h1>Home</h1>
 <p>Projet en cours.</p>'''
 
 
-@app.route('/api/videos', methods=['GET'])
+@app.route('/api/allvideos', methods=['GET']) #http://127.0.0.1:5000/api/allvideos
 def api_vid():
     conn = pymysql.connect(host='localhost',
                              user='root',
@@ -29,9 +29,9 @@ def api_vid():
     conn.row_factory = dict_factory
     cur = conn.cursor()
     cur.execute('SELECT * FROM videos;')
-    all_books = cur.fetchall()
+    all_videos = cur.fetchall()
 
-    return jsonify(all_books)
+    return jsonify(all_videos)
 
 
 
@@ -39,8 +39,8 @@ def api_vid():
 def page_not_found(e):
     return "<h1>404</h1><p>The resource could not be found.</p>", 404
 
-@app.route('/api/users', methods=['GET'])
-def api_user():
+@app.route('/api/allusers', methods=['GET']) #http://127.0.0.1:5000/api/allusers
+def api_users():
     conn = pymysql.connect(host='localhost',
                              user='root',
                              port='',
@@ -48,22 +48,41 @@ def api_user():
                              database='stage')
     conn.row_factory = dict_factory
     cur = conn.cursor()
-    cur.execute('SELECT * FROM users;')
-    all_books = cur.fetchall()
-
-    return jsonify(all_books)
-
-@app.route('/api/suggestions', methods=['GET'])
-def api_filter():
+    cur.execute('SELECT id FROM users;')
+    all_users = cur.fetchall()
     
-    i = request.args.get('id')
-    vr=co.videoread(i)
-    s=co.suggestion(i,vr,10)
+    return jsonify(all_users)
+
+@app.route('/api/user', methods=['GET']) #http://127.0.0.1:5000/api/user?id=2
+def api_user():
     conn = pymysql.connect(host='localhost',
                              user='root',
                              port='',
                              password='',
                              database='stage')
+    i = request.args.get('id')
+    conn.row_factory = dict_factory
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users WHERE id ='+i)
+    user = cur.fetchall()
+    
+    return jsonify(user)
+
+@app.route('/api/user/suggestions', methods=['GET']) #http://127.0.0.1:5000/api/user/suggestion?id=2
+def api_suggestion():
+    conn = pymysql.connect(host='localhost',
+                             user='root',
+                             port='',
+                             password='',
+                             database='stage')
+    """conn.row_factory = dict_factory #idée = si l'user n'est pas bon, retourner une page d'erreur
+    cur = conn.cursor()
+    cur.execute('SELECT id FROM users;')
+    all_id = cur.fetchall()"""
+    i = request.args.get('id')
+    vr=co.videoread(i)
+    s=co.suggestion(i,vr,10)
+    
     conn.row_factory = dict_factory
     cur = conn.cursor()
     results=[]
@@ -72,6 +91,25 @@ def api_filter():
         results.append(cur.fetchone())
 
     return jsonify(results)
+
+@app.route('/api/user/historique', methods=['GET']) #http://127.0.0.1:5000/api/user/historique?id=2
+def api_historique():
+    conn = pymysql.connect(host='localhost',
+                             user='root',
+                             port='',
+                             password='',
+                             database='stage')
+    i = request.args.get('id')
+    vr=co.videoread(i)
     
+    conn.row_factory = dict_factory
+    cur = conn.cursor()
+    results=[]
+    for j in range (len(vr)):
+        cur.execute("SELECT * FROM videos WHERE id =" + vr[j])
+        results.append(cur.fetchone())
+
+    return jsonify(results)
 
 app.run()
+
