@@ -80,8 +80,7 @@ def api_suggestion():
     cur.execute('SELECT id FROM users;')
     all_id = cur.fetchall()"""
     i = request.args.get('id')
-    vr=co.videoread(i)
-    s=co.suggestion(i,vr,10)
+    s=co.suggestion(i,10)
     
     conn.row_factory = dict_factory
     cur = conn.cursor()
