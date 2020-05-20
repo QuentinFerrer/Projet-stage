@@ -14,10 +14,8 @@ def connectcursor():
 
 cursor =connectcursor()
 
-#print(vr)
-#print(len(vr))
-###  Fin initialisation ###
-def videoread(i):
+
+def videoread(i): #Renvoie une liste avec l'id de vidéos regardées
     vr=[]
     cursor = connectcursor()
     cursor.execute("SELECT videoid FROM videosread WHERE userid=" + str(i))
@@ -28,18 +26,31 @@ def videoread(i):
     return vr
 
 ### Fonction de conversion ###
-def ConvStrTemps(L):
+    
+def ConvStrTemps(L): #Conversion d'une chaine de caractères en temps
     n=len(L)
     temps=[]
     for i in range (n):
-        if len(L[i])==5:
+        if len(L[i])==5: #juste minutes et secondes
             temps.append(timedelta(minutes=10*int(L[i][0])+int(L[i][1]),seconds=10*int(L[i][3])+int(L[i][4])))
-        if len(L[i])==8:
+        if len(L[i])==8: #heures en plus
             temps.append(timedelta(hours=10*int(L[i][0])+int(L[i][1]),minutes=10*int(L[i][3])+int(L[i][4]),seconds=10*int(L[i][6])+int(L[i][7])))
     return temps
 
+def ConvFloatInt(L): #Conversion d'un float en int
+    n=len(L)
+    for i in range (n):
+        L[i]=int(L[i])
+    return L
+
+def ConvIntStr(L):#Conversion d'un int en chaine de caractères
+    n=len(L)
+    for i in range (n):
+        L[i]=str(L[i])
+    return L
+
     
-def Separationvideosdate(x,vr):
+def Separationvideosdate(x,vr): #sépare une liste d'id de vidéos selon la date de visionnage. Permet d'avoir un historique récent et un autre ancien 
     v=vr
     v1=[]
     v2=[]
@@ -51,13 +62,14 @@ def Separationvideosdate(x,vr):
         v1.append(row[0])
         v2.append(v1[i]-v1[0])
         a=i
-        while a>0 and v2[a]<v2[a-1]:
+        while a>0 and v2[a]<v2[a-1]: #tri les listes par ordre chronologique par rapport a la durée entre le 1ere vidéo et les autres
             b,c,d=v[a],v1[a],v2[a]
             v[a],v1[a],v2[a]=v[a-1],v1[a-1],v2[a-1]
             v[a-1],v1[a-1],v2[a-1]=b,c,d
             a-=1
     m=np.mean(v2)
-    q1,q2,q3=int(np.round(n/4)),int(np.round(n/2)),int(np.round(3*n/4))
+    q1,q2,q3=int(np.round(n/4)),int(np.round(n/2)),int(np.round(3*n/4)) #Permet de diviser la liste en 4
+    #La séparation se fera ici, on séparera en fonction de la moyenne, on prendra le quart inférieur tel que l'historique récent comprend la moyenne.
     if m>v2[q3]:
         ind=q3
     else:
@@ -70,37 +82,37 @@ def Separationvideosdate(x,vr):
                 ind=0
     return v[0:ind],v[ind:n]
 
-def ConvFloatInt(L):
-    n=len(L)
-    for i in range (n):
-        L[i]=int(L[i])
-    return L
 
-def ConvIntStr(L):
-    n=len(L)
-    for i in range (n):
-        L[i]=str(L[i])
-    return L
-
-### FOnction qui récupère des données selon une liste d'id de vidéo ###
+### Fonction qui récupère des données selon une liste d'id de vidéo ###
 
 def fcategory(L):
     cursor =connectcursor()
-    #Couteux pour l'instant
     n=len(L)
-    c=[] #Liste ou il y a toutes les catégories
-    c1=[] #Liste ou les catégories n'apparaissent qu'une seule fois
-    c2=[]
-    for i in range (n): #Ajout des catégories
+    c=[] #Toutes les catégories avec doublons
+    c1=[] #Toutes les catégories sans doublons
+    c2=[] #Compte le nombre de doublons dans c1, par rapport a c2
+    #Remplissage de c1,c2,c3
+    for i in range (n): 
         cursor.execute("SELECT category FROM videos WHERE id=" + str(L[i]))
         row = cursor.fetchone()
         c.append(row[0])
-        if row[0] not in c1:
-            c1.append(row[0])
-            c2.append(c.count(row[0]))
-    
+    for i in range(n):
+        if c[i] not in c1:
+            c1.append(c[i])
+            c2.append(c.count(c[i])) 
+     #Tri de c2 selon le nombre de doublons
+    a=0
+    while a<len(c1):
+        b=a-1
+        while b>=0 and c2[a]>c2[b]:
+            tmp,tmp1=c1[a],c2[a]
+            c1[a],c2[a]=c1[b],c2[b]
+            c1[b],c2[b]=tmp,tmp1
+            a=b
+            b-=1
+        a+=1
 
-    ### Savoir s'il y a plusieurs catégories, cela est utile pour les suggestions après et qu'elles sont les catégories qui dominent les autres
+    #donne a, qui est le nombre de catégories dominantes (avec le plus de doublons)
     if len(c)==len(c1) :
         a=len(c)
     else:
@@ -111,7 +123,7 @@ def fcategory(L):
     return c1,a
 
 
-def separationmots(L):
+def separationmots(L): #utile pour les tags, creer une liste remplie de chaines de caractère. chacune représente un mot 
     n=len(L)
     mots=[]
     i=0
@@ -130,11 +142,11 @@ def separationmots(L):
     return mots
        
      
-def ftags(L): #Meme fonction de fcategory mais avec les tags
+def ftags(L): #ressort tous les tags des vidéos ou l'id figure dans la liste en entrée
     n=len(L)
     t1=[] 
     cursor =connectcursor()
-    for i in range (n): #Ajout des catégories
+    for i in range (n): 
         cursor.execute("SELECT tags FROM videos WHERE id=" + L[i])
         row = cursor.fetchone()
         R=separationmots(row[0])
@@ -144,11 +156,11 @@ def ftags(L): #Meme fonction de fcategory mais avec les tags
 
     return t1
 
-def ftype(L): #Meme fonction de fcategory mais avec les types
+def ftype(L): #Meme fonction que ftags mais avec les types
     n=len(L)
     t1=[] 
     cursor =connectcursor()
-    for i in range (n): #Ajout des catégories
+    for i in range (n): 
         cursor.execute("SELECT type FROM videos WHERE id=" + L[i])
         row = cursor.fetchone()
         R=separationmots(row[0])
@@ -160,16 +172,16 @@ def ftype(L): #Meme fonction de fcategory mais avec les types
 
 
 
-### Suggestion quand il y a plusieurs catégories dans la liste de vidéos ###
+
     
-def suggestioncategale(L):
+def suggestioncategale(L): # Suggestion par rapport aux catégories et tags, lorsque il n'y a pas de catégories dominantes
     cursor =connectcursor()
     cat,p=fcategory(L)
     tag=ftags(L)
     L=[int("".join(x)) for x in L]
-    #On va hierarchiser les videos selon l'utilisateur
-    tiers2=[]
-    tiers3=[]
+    #Séparation en deux listes 'tiers2' et 'tiers3' tiers2 est plus important que tiers3
+    tiers2=[] #catégorie + tag en commun
+    tiers3=[] #catégorie en commun
     
     ### Suggestion basée sur la base de données ### 
     
@@ -190,22 +202,23 @@ def suggestioncategale(L):
             if row[0] not in tiers2  and row[0] not in tiers3 and row[0] not in L :
                 tiers3.append(row[0])
             row = cursor.fetchone()
-    tiers2=tri(L,tiers2)
+    #On trie chacune des listes pour avoir une hiérarchie a l'interieur des listes.
+    tiers2=tri(L,tiers2) 
     tiers3=tri(L,tiers3)
     return tiers2,tiers3
 
-### Suggestions quand il y a qu'une seule catégorie de vidéos regardées ###
+
     
-def suggestioncatdiff(L):
+def suggestioncatdiff(L): # Suggestion par rapport aux catégories et tags, lorsque il y a une ou des catégories dominantes
     cursor =connectcursor()
     cat,f=fcategory(L)
     tag=ftags(L)
     L=[int("".join(x)) for x in L]
-    #On va hierarchiser les videos selon l'utilisateur
-    tiers2=[]
-    tiers3=[]
+    #Meme principe que pour suggestioncategale 
+    tiers2=[] #Cat+tag en commun et cat dominante (pas besoin de tag)
+    tiers3=[] #cat non dominante
     
-    ### Suggestion basée sur la base de données ### 
+     
     for k in range (len(cat)):
         for i in range (len(tag)):
             cursor.execute('SELECT id FROM videos WHERE tags LIKE \'%' + tag[i] + '%\' and category LIKE \'%' + cat[k] + '%\'')
@@ -231,21 +244,20 @@ def suggestioncatdiff(L):
 
     return tiers2, tiers3
 
-### Fonction qui trie une liste de vidéo en fonction des tags et du temps d'une liste de vidéos regardées ###
     
-def tri(Lu,Ls):
+def tri(Lu,Ls): # Fonction qui trie une liste de vidéo en fonction des tags et du temps par rapport a un historique
     cursor =connectcursor()
-    n=len(Ls)
-    tab=np.zeros((2,n))
+    n=len(Ls) #Lu=Liste user (historique) Ls=Liste suggérée 
+    tab=np.zeros((2,n)) 
     tab[0,:]=Ls
     t=[]
-    for i in range (len(Lu)):
+    for i in range (len(Lu)):#On met tous les tags des vidéos de l'historique dans une liste, Les doublons sont importants
         cursor.execute("SELECT tags FROM videos WHERE id=" + str(Lu[i]))
         row = cursor.fetchone()
         R=separationmots(row[0])
         for j in range (len(R)):
             t.append(R[j])
-    for i in range (n):
+    for i in range (n): #Pour chaque vidéo suggérée, on va compter le nombre de fois que ces tags apparaissent dans la liste précédente.
         v=0
         cursor.execute("SELECT tags FROM videos WHERE id=" + str(Ls[i]))
         row = cursor.fetchone()
@@ -254,8 +266,8 @@ def tri(Lu,Ls):
             v+=t.count(R[j])
             row = cursor.fetchone()
         tab[1,i]=v
-    
-
+    #tab contient donc sur la premiere ligne, l'id des vidéos suggérées et sur la deuxieme le nombre de fois que les tags apparaissent.
+    #Cela ne suffit pas pour trier, on va donc prendre en compte le temps moyen des vidéos regardées.
     
     Temps=[]
     
@@ -266,8 +278,9 @@ def tri(Lu,Ls):
             #print (str(row[0]))
             Temps.append(str(row[0]))
             row = cursor.fetchone()
-    moy=np.mean(ConvStrTemps(Temps))
+    moy=np.mean(ConvStrTemps(Temps)) #on a ici la moyenne du temps des vidéos regardées.
     
+    #A présent, pour chaque vidéo suggerée on va mettre dans une liste (a la meme position que dans tab) le temps de cette vidéo.
     temps2=[]
     for i in range (len(Ls)):
         cursor.execute("SELECT length FROM videos WHERE id=" + str(Ls[i]))
@@ -279,10 +292,12 @@ def tri(Lu,Ls):
     
     temps2=ConvStrTemps(temps2)
     
+    #Le tri de la liste commence alors ici.
     for i in range (n):
         a=i
         b=a+1
         while b<n and a>=0 and (tab[1,b]>tab[1,a] or (tab[1,a]==tab[1,b] and np.abs(temps2[b]-moy)<np.abs(temps2[a]-moy))):
+            #Ici on regarde alors tant que le nombre de tag de b est plus grand que a ou tant que les deux sont égaux mais que le temps de b est plus poche de la moyenne que le temps de a
             c=int(tab[0,b])
             d=int(tab[1,b])
             e=temps2[b]
@@ -296,21 +311,44 @@ def tri(Lu,Ls):
             
     return list(tab[0,:])
             
-### Fonction de suggestions basée sur le visionnage des autres utilisateurs ###
-def suggestionusers(user,L,tiers2,tiers3,tiers4,nbre):
+
+def suggestionusers(user,L,tiers2,tiers3,tiers4,nbre): # Fonction de suggestions basée sur le visionnage des autres utilisateurs nbre est le nombre de suggestion voulu
     cursor =connectcursor()
     tiers1=[]
     n=len(L)
     taux=round((4/5)*n)#sert à fixer un minimum de vidéos en commun 
     vid=[]
+    idother=[]
     for i in range(n):
-        idother=[]
         cursor.execute('SELECT userid FROM videosread WHERE videoid =' + str(L[i]) )
         row = cursor.fetchone()
         while row :
-            if int(row[0]) != int(user) :
+            if int(row[0]) != int(user) and row[0] not in idother :
                 idother.append(row[0])
             row = cursor.fetchone()
+    for j in range (len(idother)):
+        idvid=[]
+        #par id, on selectionne tous les vidéos qu'il a regardé
+        cursor.execute('SELECT videoid FROM videosread WHERE userid =' + str(idother[j]))
+        row = cursor.fetchone()
+        while row :
+            idvid.append(row[0])
+            row = cursor.fetchone()       
+        a=0
+        for k in range(n):
+            #On supprime les vidéos deja regardé par l'user de base et en meme temps on compte les vidéos en commun (a)
+            if idvid.count(int(L[k]))!=0:
+                a+=1
+                idvid.remove(int(L[k]))
+        if a>=taux: #si a est plus grand que le taux, on peut ajouter ces vidéos a la suggestion
+            vid.extend(idvid)
+    vid=list(set(vid))
+    t=0
+    t1=[3/4,2/3,1/2] #peut changer. C'est les différents taux qu'on prendra pour essayer d'avoir le nombre de suggestion voulu
+    while  t<len(t1)  and CompteID(vid,tiers2,tiers3,tiers4)<nbre: #s'arrete si on obtient le nombre de suggestion voulu, ou si on sort de la liste des taux
+        taux=round((t1[t])*n)
+        vid=[]
+        #Meme schéma de code que pour le premier taux.
         for j in range (len(idother)):
             idvid=[]
             cursor.execute('SELECT videoid FROM videosread WHERE userid =' + str(idother[j]))
@@ -325,41 +363,15 @@ def suggestionusers(user,L,tiers2,tiers3,tiers4,nbre):
                     idvid.remove(int(L[k]))
             if a>=taux:
                 vid.extend(idvid)
-    vid=list(set(vid))
-    t=0
-    t1=[3/4,2/3,1/2]
-    while  t<len(t1)  and CompteID(vid,tiers2,tiers3,tiers4)<nbre:
-        taux=round((t1[t])*n)#sert à fixer un minimum de vidéos en commun 
-        vid=[]
-        for i in range(n):
-            idother=[]
-            cursor.execute('SELECT userid FROM videosread WHERE videoid =' + str(L[i]) )
-            row = cursor.fetchone()
-            while row :
-                if int(row[0]) != int(user) :
-                    idother.append(row[0])
-                row = cursor.fetchone()
-            for j in range (len(idother)):
-                idvid=[]
-                cursor.execute('SELECT videoid FROM videosread WHERE userid =' + str(idother[j]))
-                row = cursor.fetchone()
-                while row :
-                    idvid.append(row[0])
-                    row = cursor.fetchone()       
-                a=0
-                for k in range(n):
-                    if idvid.count(int(L[k]))!=0:
-                        a+=1
-                        idvid.remove(int(L[k]))
-                if a>=taux:
-                    vid.extend(idvid)
         vid=list(set(vid))
         t+=1
+    #Pour savoir si on a atteint le nombre voulu.
     if CompteID(vid,tiers2,tiers3,tiers4)<nbre:
         tmp=0
     else:
         tmp=1
-    
+    #adapte les liste tiers. C'est a dire que si une vidéo se trouvant dans vid et dans tiers2, tiers3 ou tiers4, elle passe à la liste supérieur
+    #si elle se trouve nul part, elle apparait dans tiers 4
     for i in range (len(vid)):
         a=vid[i]
         if tiers2.count(vid[i])!=0:
@@ -379,7 +391,7 @@ def suggestionusers(user,L,tiers2,tiers3,tiers4,nbre):
     return tiers1,tiers2,tiers3,tiers4,tmp   
 
 
-def CompteID(vid,tiers2,tiers3,tiers4):
+def CompteID(vid,tiers2,tiers3,tiers4): #Compte le nombre de vidéos presentes dans ces listes
     a=0
     for i in range (len(vid)):
         if tiers2.count(vid[i])==0:
@@ -390,14 +402,14 @@ def CompteID(vid,tiers2,tiers3,tiers4):
                 
 
 
-### Fonction qui réajuste des groupes de vidéos selon la langue 
-def triLang(L,T1,T2,T3,T4):
+
+def triLang(L,T1,T2,T3,T4): # Fonction qui réajuste des groupes de vidéos selon la langue 
     cursor =connectcursor()
     T0=[]
     n=len(L)
-    c=[] #Liste ou il y a toutes les catégories
-    c1=[] #Liste ou les catégories n'apparaissent qu'une seule fois
-    c2=[] #Liste qui va compter le nombre de fois qu'apparait chaque catégorie, utile pour les trier
+    c=[] #Liste ou il y a toutes les langues
+    c1=[] #Liste ou les langues n'apparaissent qu'une seule fois
+    c2=[] #Liste qui va compter le nombre de fois qu'apparait chaque langue, utile pour les trier
     
     for i in range (n): #Ajout des catégories
         cursor.execute("SELECT lang FROM videos WHERE id=" + L[i])
@@ -407,12 +419,12 @@ def triLang(L,T1,T2,T3,T4):
             c1.append(row[0])
     
     n=len(c1)
-    if n>1:
+    if n>1: #S'il y a plusieurs langues
         for i in range (n):
             mot=c1[i]
             c2.append(c.count(mot))
-        
-        for i in range (n-1): #Trie les langues des vidéos les plus regardées
+        #Répartition des langues selon leur nombre d'apparition
+        for i in range (n-1): 
             a=i
             b=i+1
             while c2[b]>c2[a] and a>=0:
@@ -425,7 +437,8 @@ def triLang(L,T1,T2,T3,T4):
                 b=a
                 a=b-1
         c3=[]
-        c3.append(c1[0])
+        c3.append(c1[0])#Langue dominante
+        #Réajustement des listes 'tiers' par rapport a leur langue 
         i=0
         while i< (len(T1)): 
             cursor.execute("SELECT lang FROM videos WHERE id=" + str(T1[i]))
@@ -462,7 +475,7 @@ def triLang(L,T1,T2,T3,T4):
                 T4.remove(T3[i])
             else:
                 i+=1
-        
+    #S'il n'y a qu'une seule langue  
     else:
         T0=T1
         T1=T2
@@ -472,7 +485,7 @@ def triLang(L,T1,T2,T3,T4):
     return T0,T1,T2,T3,T4
         
         
-def suggestiontag(L,tiers1,tiers2,tiers3,tiers4,tiers5):
+def suggestiontag(L,tiers1,tiers2,tiers3,tiers4,tiers5): #Rajout de vidéos dans tiers5 seulement grace a leur tag 
     cursor =connectcursor()
     tag=ftags(L)
     L=[int("".join(x)) for x in L]
@@ -482,15 +495,15 @@ def suggestiontag(L,tiers1,tiers2,tiers3,tiers4,tiers5):
         row = cursor.fetchone()
         while row :
             if row[0] not in tiers2 and row[0] not in L and row[0] not in tiers1 and row[0] not in tiers3 and row[0] not in tiers4 and row[0] not in tiers5:
-                add.append(row[0])
+                add.append(row[0]) #On l'ajoute que si elle n'apparait dans aucune des listes de suggestions
             row = cursor.fetchone()
 
-    add=tri(L,add)
-    tiers5.extend(add)
+    add=tri(L,add)#On trie la nouvelle liste crée
+    tiers5.extend(add) #on l'ajoute a la fin de la dernière liste. On ne la re trie pas apres car ce sont les suggestions qui ont le moins d'importance
 
     return tiers1,tiers2,tiers3,tiers4,tiers5 
 
-def suggestiontyp(L,tiers1,tiers2,tiers3,tiers4,tiers5):
+def suggestiontyp(L,tiers1,tiers2,tiers3,tiers4,tiers5):#Rajout de vidéos dans tiers5 seulement grace a leur type  Meme raisonnement que pour suggestiontag
     cursor =connectcursor()
     typ=ftype(L)
     L=[int("".join(x)) for x in L]
@@ -508,7 +521,7 @@ def suggestiontyp(L,tiers1,tiers2,tiers3,tiers4,tiers5):
 
     return tiers1,tiers2,tiers3,tiers4,tiers5
 
-def suggestionvidsep(user,L):
+def suggestionvidsep(user,L):#Choix de suggestion par rapport aux catégories (dominante ou non)
     cat,t=fcategory(L)
     if t==len(cat):
         tiers2, tiers3 = suggestioncategale(L)
@@ -517,7 +530,7 @@ def suggestionvidsep(user,L):
           
     return tiers2,tiers3
 
-def supprvidinit(L,t1,t2):
+def supprvidinit(L,t1,t2): #suppression des vidéos de l'historique dans les suggestions
     for i in range (len(L)):
         if int(L[i]) in t1:
             t1.remove(int(L[i]))
@@ -525,7 +538,7 @@ def supprvidinit(L,t1,t2):
             t2.remove(int(L[i]))
     return t1,t2
 
-def Fusion(t1,t2,T1,T2):
+def Fusion(t1,t2,T1,T2): #Fusion des 4 listes crées en 3, car les vidéos suggérées par rapport a l'historique recent, ont plus d'importance.
     t3=[]
     for i in range (len(T1)):
         if T1[i] in t2:
@@ -542,27 +555,33 @@ def Fusion(t1,t2,T1,T2):
 
 def suggestion(user,nbre):
     
-    L=videoread(user)
-    va,vr=Separationvideosdate(user,L)
+    L=videoread(user) #historique
+    va,vr=Separationvideosdate(user,L) #séparation de l'historique
     
-    tiers2,tiers3=suggestionvidsep(user,vr)
+    #Suggestion par rapport aux catégories et tags
+    tiers2,tiers3=suggestionvidsep(user,vr) 
     T2,T3=suggestionvidsep(user,va)
     
+    #Suppression des vidéos presentes dans les suggestions et dans l'historique global
     tiers2,tiers3=supprvidinit(L,ConvFloatInt(tiers2),ConvFloatInt(tiers3))
     T2,T3=supprvidinit(L,ConvFloatInt(T2),ConvFloatInt(T3))
     
+    #Fusion des listes de suggestions
     tiers2,tiers3,tiers4=Fusion(tiers2,tiers3,T2,T3)
     
+    #Suggestion par rapport aux autres users
     tiers1,tiers2,tiers3,tiers4,tmp=suggestionusers(user,L,tiers2,tiers3,tiers4,nbre)
     
-    
+    #Tri de chaque liste
     tiers1=ConvFloatInt(tri(L,tiers1))
     tiers2=ConvFloatInt(tri(L,tiers2))
     tiers3=ConvFloatInt(tri(L,tiers3))
     tiers4=ConvFloatInt(tri(L,tiers4))
     
+    #Tri par rapport aux langues
     tiers1,tiers2,tiers3,tiers4,tiers5=triLang(L,tiers1,tiers2,tiers3,tiers4)
     
+    #rajout de vidéos si le nombre de suggestions n'est pas suffisant
     if tmp ==0:
         tiers1,tiers2,tiers3,tiers4,tiers5=suggestiontag(L,tiers1,tiers2,tiers3,tiers4,tiers5)
         tmp=len(tiers1)+len(tiers2)+len(tiers3)+len(tiers4)+len(tiers5)
@@ -573,6 +592,7 @@ def suggestion(user,nbre):
                 #print("nombre de suggestions demandées trop grand, voici le nombre de suggestion : ",tmp)
                 nbre=tmp
     
+    #Conversion des id en entier
     tiers1=ConvFloatInt(tiers1)
     tiers2=ConvFloatInt(tiers2)
     tiers3=ConvFloatInt(tiers3)       
@@ -590,7 +610,8 @@ def suggestion(user,nbre):
     l2=len(tiers2)
     l3=len(tiers3)
     l4=len(tiers4)
-
+    #Remplissage de la liste des suggestions où la premiere vidéo correspond à la suggestion la plus importante
+    
     while len(res)<nbre:
         if a<l1:
             res.append(tiers1[a])
@@ -610,14 +631,13 @@ def suggestion(user,nbre):
                     else:
                         res.append(tiers5[a-l1-l2-l3-l4])
                         a+=1
+    
     res=ConvIntStr(res)
     return res
 
-"""
 
 x=str(input("id de la personne ="))
 
 nbre=int(input('Nombre de suggestion ='))
 
 print(suggestion(x,nbre))
-"""
