@@ -1,0 +1,138 @@
+import pymysql.cursors
+import numpy as np
+from datetime import timedelta
+import calendar as cal
+
+def connectcursor():
+    conn = pymysql.connect(host='localhost',
+                             user='root',
+                             port='',
+                             password='',
+                             database='cours')
+    cursor = conn.cursor()
+    return cursor
+
+cursor =connectcursor()
+
+def history(i):
+    lr=[]
+    cursor = connectcursor()
+    cursor.execute("SELECT lessonid FROM lessonread WHERE userid=" + str(i))
+    row = cursor.fetchone()
+    while row:
+        lr.append(str(row[0]))
+        row = cursor.fetchone()
+    return lr
+
+def fcat(L):
+    cursor = connectcursor()
+    c1=[] #Toutes les catégories avec doublons
+    c2=[] #Toutes les catégories sans doublons
+    c3=[] #Compte le nombre de doublons dans c1, par rapport a c2
+    n=len(L)
+    #Remplissage de c1,c2,c3
+    for i in range(n):
+        cursor.execute("SELECT category FROM lesson WHERE id=" + str(L[i]))
+        row = cursor.fetchone()
+        c1.append(str(row[0]))
+    for i in range(n):
+        if c1[i] not in c2:
+            c2.append(c1[i])
+            c3.append(c1.count(c1[i]))
+    #Tri de c2 selon le nombre de doublons
+    a=0
+    while a<len(c2):
+        b=a-1
+        while b>=0 and c3[a]>c3[b]:
+            tmp,tmp1=c2[a],c3[a]
+            c2[a],c3[a]=c2[b],c3[b]
+            c2[b],c3[b]=tmp,tmp1
+            a=b
+            b-=1
+        a+=1
+    #donne a, qui est le nombre de catégories dominantes (avec le plus de doublons)
+    if len(c1)==len(c2) :
+        a=len(c1)
+    else:
+        a=1
+        while a< len(c1) and c1[0]==c1[a]:
+            a+=1
+        
+    return c2,c3,a
+    
+def fsubcat(L):#Meme code que pour les catégories mais cette fois-ci pour les sous-categories
+    cursor = connectcursor()
+    c1=[]
+    c2=[]
+    c3=[]
+    n=len(L)
+    for i in range(n):
+        cursor.execute("SELECT sub-category FROM lesson WHERE id=" + str(L[i]))
+        row = cursor.fetchone()
+        c1.append(str(row[0]))
+    for i in range(n):
+        if c1[i] not in c2:
+            c2.append(c1[i])
+            c3.append(c1.count(c1[i]))
+    
+    a=0
+    while a<len(c2):
+        b=a-1
+        while b>=0 and c3[a]>c3[b]:
+            tmp,tmp1=c2[a],c3[a]
+            c2[a],c3[a]=c2[b],c3[b]
+            c2[b],c3[b]=tmp,tmp1
+            a=b
+            b-=1
+        a+=1
+    
+    if len(c1)==len(c2) :
+        a=len(c1)
+    else:
+        a=1
+        while a< len(c1) and c1[0]==c1[a]:
+            a+=1
+        
+    return c2,c3,a    
+
+def separationmots(L): #utile pour les tags, creer une liste remplie de chaines de caractère. chacune représente un mot 
+    n=len(L)
+    mots=[]
+    i=0
+    j=1
+    arret = 0
+    while arret ==0:
+        if L[j]!=',' and j < n:
+            j+=1
+        else:
+            mots.append(L[i:j])
+            i=j+1
+            j=i+1
+        if j==n:
+            mots.append(L[i:j])
+            arret=1
+    return mots
+
+def ftags(L):#Meme code que pour les catégories mais cette fois-ci pour les tags
+    n=len(L)
+    t1=[] 
+    cursor =connectcursor()
+    for i in range (n): 
+        cursor.execute("SELECT tags FROM courses WHERE id=" + L[i])
+        row = cursor.fetchone()
+        R=separationmots(row[0])
+        for j in range (len(R)):
+            if R[j] not in t1:
+                t1.append(R[j])
+
+    return t1
+
+
+
+
+"""
+x=str(input("id de la personne ="))
+
+nbre=int(input('Nombre de suggestion ='))
+
+print(suggestion(x,nbre))"""
