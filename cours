@@ -1,7 +1,6 @@
 import pymysql.cursors
 import numpy as np
 from datetime import timedelta
-import calendar as cal
 
 def connectcursor():
     conn = pymysql.connect(host='localhost',
@@ -127,9 +126,330 @@ def ftags(L):#Meme code que pour les catégories mais cette fois-ci pour les tag
 
     return t1
 
+def separationcours(U,L):
+    h=L
+    h1=[]
+    h2=[]
+    n=len(h)
+    cursor = connectcursor()
+    for i in range(n):
+        cursor.execute('SELECT date FROM videosread WHERE userid = ' + U + ' and videoid = ' + h[i] )
+        row = cursor.fetchone()
+        h1.append(row[0])
+        h2.append(h1[i]-h1[0])
+        a=i
+        while a>0 and h2[a]<h2[a-1]: #tri les listes par ordre chronologique par rapport au temps entre le visionnage du 1er cours et les autres
+            b,c,d=h[a],h1[a],h2[a]
+            h[a],h1[a],h2[a]=h[a-1],h1[a-1],h2[a-1]
+            h[a-1],h1[a-1],h2[a-1]=b,c,d
+            a-=1
+    m=np.mean(h2)
+    q1,q2,q3=int(np.round(n/4)),int(np.round(n/2)),int(np.round(3*n/4)) #Permet de diviser la liste en 4
+    #La séparation se fera ici, on séparera en fonction de la moyenne, on prendra le quart inférieur tel que l'historique récent comprend la moyenne.
+    if m>h2[q3]:
+        ind=q3
+    else:
+        if m>h2[q2]:
+            ind=q2
+        else:
+            if m>h2[q1]:
+                ind=q1
+            else:
+                ind=0
+    return h[0:ind],h[ind:n]
+
+def suggcategale(L): # Suggestion par rapport aux catégories et tags, lorsque il n'y a pas de catégories dominantes
+    cursor =connectcursor()
+    cat,nbr,p=fcat(L)
+    subcat,nbr2,p2=fsubcat(L)
+    tag=ftags(L)
+    L=[int("".join(x)) for x in L]
+    #Séparation en trois listes 'tiers1' 'tiers2' et 'tiers3' tiers 1 est plus importante que tiers2 qui elle meme est plus importante que tiers3
+    tiers1=[] #catégorie + Subcat +tag en commun
+    tiers2=[] #Cat + Sub cat
+    tiers3=[] #catégorie en commun
+    
+    ### Suggestion basée sur la base de données ### 
+    
+    for i in range (len(cat)):
+        
+        for j in range (len(subcat)):
+        
+            for k in range(len(tag)):
+                cursor.execute('SELECT id FROM videos WHERE category LIKE \'%' + cat[i] + '%\' and subcategory LIKE \'%' + subcat[j] + '%\' and tags LIKE \'%' + tag[k] + '%\' ')
+                row = cursor.fetchone()
+                while row :
+                    if row[0] not in tiers1 and row[0] not in L :
+                        tiers1.append(row[0])
+                    row = cursor.fetchone()
+                
+                
+            cursor.execute('SELECT id FROM videos WHERE category LIKE \'%' + cat[i] + '%\' and subcategory LIKE \'%' + subcat[j] + '%\'')
+            row = cursor.fetchone()
+            while row :
+                if row[0] not in tiers1  and row[0] not in tiers2 and row[0] not in L :
+                    tiers2.append(row[0])
+                row = cursor.fetchone()
+                
+                
+        cursor.execute('SELECT id FROM videos WHERE category LIKE \'%' + cat[i] + '%\'')
+        row = cursor.fetchone()
+        while row :
+            if row[0] not in tiers1  and row[0] not in tiers2 and row[0] not in L and row[0] not in tiers3:
+                tiers3.append(row[0])
+            row = cursor.fetchone()
+    
+    return tiers1,tiers2,tiers3
+
+def suggcatdiff(L): # Suggestion par rapport aux catégories et tags, lorsque il y a une ou des catégories dominantes
+    cursor =connectcursor()
+    cat,nbrecat,f=fcat(L)
+    subcat,nbresubcat,f=fsubcat(L)
+    tag=ftags(L)
+    L=[int("".join(x)) for x in L]
+    #Meme principe que pour suggestioncategale 
+    tiers1=[] #Cat+subCat+tag ou cat dominante + subcat
+    tiers2=[] #Cat+subcat en commun et cat dominante 
+    tiers3=[] #cat non dominante
+    
+     
+    for i in range (len(cat)):
+        for j in range (len(subcat)):
+            for k in range (len(tag)):
+                cursor.execute('SELECT id FROM videos WHERE tags LIKE \'%' + tag[k] + '%\' and subcategory LIKE \'%' + subcat[j] + '%\' and category LIKE \'%' + cat[i] + '%\'')
+                row = cursor.fetchone()
+                while row :
+                    if row[0] not in tiers2 and row[0] not in L :
+                        tiers1.append(row[0])
+                    row = cursor.fetchone()
+                        
+                        
+            cursor.execute('SELECT id FROM videos WHERE category LIKE \'%' + cat[i] + '%\' and subcategory LIKE \'%' + subcat[j] + '%\'')
+            row = cursor.fetchone()
+            while row :
+                if i<f:
+                    if row[0] not in tiers1 and  row[0] not in L :
+                        tiers1.append(row[0])
+                else :
+                    if row[0] not in tiers1 and row[0] not in tiers2 and row[0] not in L :
+                        tiers2.append(row[0])
+                row = cursor.fetchone()
+        cursor.execute('SELECT id FROM videos WHERE category LIKE \'%' + cat[i] + '%\'')
+        row = cursor.fetchone()
+        while row :
+            if i<f:
+                if row[0] not in tiers1 and row[0] not in tiers2 and  row[0] not in L :
+                    tiers2.append(row[0])
+            else :
+                if row[0] not in tiers1 and row[0] not in tiers2 and row[0] not in tiers3 and row[0] not in L :
+                    tiers3.append(row[0])
+            row = cursor.fetchone()
+
+    return tiers1,tiers2, tiers3
 
 
+def suggcourses(user,L):#Choix de suggestion par rapport aux catégories (dominante ou non)
+    cat,nbr,t=fcat(L)
+    if t==len(cat):
+        tiers1,tiers2, tiers3 = suggcategale(L)
+    else:
+        tiers1,tiers2,tiers3= suggcatdiff(L)
+          
+    return tiers1,tiers2,tiers3
 
+def supprcoursinit(L,t1,t2,t3): #suppression des cours de l'historique dans les suggestions
+    for i in range (len(L)):
+        if int(L[i]) in t1:
+            t1.remove(int(L[i]))
+        if int(L[i]) in t2:
+            t2.remove(int(L[i]))
+        if int(L[i]) in t3:
+            t3.remove(int(L[i]))
+    return t1,t2,t3
+
+def Fusion(t1,t2,t3,T1,T2,T3): #Fusion des 6 listes crées en 4, car les cours suggérées par rapport a l'historique recent, ont plus d'importance.
+    t4=[]
+    
+    for i in range (len(T1)):
+        if T1[i] in t3:
+            t2.append(T1[i])
+            t3.remove(T1[i])
+        else:
+            if T1[i] in t2:
+                t1.append(T1[i])
+                t2.remove(T1[i])
+            else :
+                if T1[i] not in t1:
+                    t3.append(T1[i])
+                
+    for i in range (len(T2)):
+        if T2[i] in t3:
+            t2.append(T2[i])
+            t3.remove(T2[i])
+        else:
+            if T2[i] in t2:
+                t1.append(T2[i])
+                t2.remove(T2[i])
+            else :
+                if T2[i] not in t1:
+                    t3.append(T2[i]) 
+    
+    for i in range (len(T3)):
+        if T3[i] not in t1 and T3[i] not in t2 and T3[i] not in t3:
+            t4.append(T2[i])   
+    return t1,t2,t3,t4
+
+def CompteID(vid,tiers1,tiers2,tiers3,tiers4): #Compte le nombre de cours presents dans ces listes
+    a=0
+    for i in range (len(vid)):
+        if tiers1.count(vid[i])==0:
+            if tiers2.count(vid[i])==0:
+                if tiers3.count(vid[i])==0:
+                    if tiers4.count(vid[i])==0:
+                        a+=1
+    return (len(tiers1)+len(tiers2)+len(tiers3)+len(tiers4)+a)
+
+def suggusers(user,L,tiers1,tiers2,tiers3,tiers4,nbre): # Fonction de suggestions basée sur l'historique des autres utilisateurs nbre est le nombre de suggestion voulu
+    cursor =connectcursor()
+    tiers0=[]
+    n=len(L)
+    taux=round((4/5)*n)#sert à fixer un minimum de cours en commun 
+    cours=[]
+    idother=[]
+    for i in range(n):
+        cursor.execute('SELECT userid FROM lessonread WHERE lessonid =' + str(L[i]) )
+        row = cursor.fetchone()
+        while row :
+            if int(row[0]) != int(user) and row[0] not in idother :
+                idother.append(row[0])
+            row = cursor.fetchone()
+    for j in range (len(idother)):
+        idcours=[]
+        #par id, on selectionne tous les cours qu'il a regardé
+        cursor.execute('SELECT lessonid FROM lessonread WHERE userid =' + str(idother[j]))
+        row = cursor.fetchone()
+        while row :
+            idcours.append(row[0])
+            row = cursor.fetchone()       
+        a=0
+        for k in range(n):
+            #On supprime les cours deja regardé par l'user de base et en meme temps on compte les cours en commun (a)
+            if idcours.count(int(L[k]))!=0:
+                a+=1
+                idcours.remove(int(L[k]))
+        if a>=taux: #si a est plus grand que le taux, on peut ajouter ces cours a la suggestion
+            cours.extend(idcours)
+    cours=list(set(cours))
+    t=0
+    t1=[3/4,2/3,1/2] #peut changer. C'est les différents taux qu'on prendra pour essayer d'avoir le nombre de suggestion voulu
+    while  t<len(t1)  and CompteID(cours,tiers1,tiers2,tiers3,tiers4)<nbre: #s'arrete si on obtient le nombre de suggestion voulu, ou si on sort de la liste des taux
+        taux=round((t1[t])*n)
+        cours=[]
+        #Meme schéma de code que pour le premier taux.
+        for j in range (len(idother)):
+            idcours=[]
+            cursor.execute('SELECT videoid FROM videosread WHERE userid =' + str(idother[j]))
+            row = cursor.fetchone()
+            while row :
+                idcours.append(row[0])
+                row = cursor.fetchone()       
+            a=0
+            for k in range(n):
+                if idcours.count(int(L[k]))!=0:
+                    a+=1
+                    idcours.remove(int(L[k]))
+            if a>=taux:
+                cours.extend(idcours)
+        cours=list(set(cours))
+        t+=1
+    #Pour savoir si on a atteint le nombre voulu.
+    if CompteID(cours,tiers1,tiers2,tiers3,tiers4)<nbre:
+        tmp=0
+    else:
+        tmp=1
+    #adapte les liste tiers. C'est a dire que si un cours se trouve dans cours et dans tiers1, tiers2, tiers3 ou tiers4, il passe à la liste supérieur
+    #s'il se trouve nul part, elle apparait dans tiers 4
+    for i in range (len(cours)):
+        a=cours[i]
+        if tiers1.count(cours[i])!=0:
+                tiers1.remove(a)
+                tiers0.append(a)
+        else:
+            if tiers2.count(cours[i])!=0:
+                tiers2.remove(a)
+                tiers1.append(a)
+            else:
+                if tiers3.count(cours[i])!=0:
+                    tiers3.remove(a)
+                    tiers2.append(a)
+                else:
+                    if tiers4.count(cours[i])!=0:
+                        tiers4.remove(a)
+                        tiers3.append(a)
+                    else:
+                        tiers4.append(a)
+    
+    return tiers0,tiers1,tiers2,tiers3,tiers4,tmp
+
+def sugglink(L,t1,t2,t3,t4,t5): #Permet d'ajouter et ajuster les tiers selon si un id de cours se trouve dans la catégorie "link" d'un cours regardé
+    cursor =connectcursor()
+    n=len(L)
+    link=[]
+    t0=[]
+    for i in range(n):
+        cursor.execute('SELECT link FROM lessons WHERE id =' + str(L[i]))
+        row = cursor.fetchone()
+        while row :
+            if row[0] not in link :
+                link.append(row[0])
+            row = cursor.fetchone()
+    for i in range(len(link)):
+        a=link[i]
+        if t1.count(link[i])!=0:
+                t1.remove(a)
+                t0.append(a)
+        else:
+            if t2.count(link[i])!=0:
+                t2.remove(a)
+                t1.append(a)
+            else:
+                if t3.count(link[i])!=0:
+                    t3.remove(a)
+                    t2.append(a)
+                else:
+                    if t4.count(link[i])!=0:
+                        t4.remove(a)
+                        t3.append(a)
+                    else:
+                        if t5.count(link[i])!=0:
+                            t5.remove(a)
+                            t4.append(a)
+                        else:
+                            t5.append(a)
+    return t0,t1,t2,t3,t4,t5
+        
+
+def suggestion(user,nbre):
+    L=history(user) #historique
+    ha,hr=separationcours(user,L) #séparation de l'historique selon les dates de visionnages, hr=historique récent, ha=historique ancien
+    
+    #catégories sub cat tags (T3)
+    T1,T2,T3=suggcourses(user,ha)
+    t1,t2,t3=suggcourses(user,hr)
+    
+    T1,T2,T3=supprcoursinit(L,T1,T2,T3)
+    t1,t2,t3=supprcoursinit(L,t1,t2,t3)
+    
+    #reunification séparation date (T4)
+    t1,t2,t3,t4=Fusion(t1,t2,t3,T1,T2,T3)
+    
+    # sugestion user
+    t1,t2,t3,t4,t5,tmp= suggusers(user,L,t1,t2,t3,t4,nbre)
+    
+    #Link T6
+    t1,t2,t3,t4,t5,t6=sugglink(L,t1,t2,t3,t4,t5)
+    
+    #tri (Lang cat tag Studies lvl // date decréation ?)
 """
 x=str(input("id de la personne ="))
 
