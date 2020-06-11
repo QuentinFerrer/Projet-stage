@@ -16,7 +16,7 @@ cursor =connectcursor()
 def history(i):
     lr=[]
     cursor = connectcursor()
-    cursor.execute("SELECT courseid FROM coursesread WHERE userid=" + str(i))
+    cursor.execute("SELECT lessonid FROM coursesread WHERE userid=" + str(i))
     row = cursor.fetchone()
     while row:
         lr.append(str(row[0]))
@@ -133,7 +133,7 @@ def separationcours(U,L):
     n=len(h)
     cursor = connectcursor()
     for i in range(n):
-        cursor.execute('SELECT date FROM coursesread WHERE userid = ' + U + ' and courseid = ' + h[i] )
+        cursor.execute('SELECT date FROM coursesread WHERE userid = ' + U + ' and lessonid = ' + h[i] )
         row = cursor.fetchone()
         h1.append(row[0])
         h2.append(h1[i]-h1[0])
@@ -317,7 +317,7 @@ def suggusers(user,L,tiers1,tiers2,tiers3,tiers4,nbre): # Fonction de suggestion
     cours=[]
     idother=[]
     for i in range(n):
-        cursor.execute('SELECT userid FROM coursesread WHERE courseid =' + str(L[i]) )
+        cursor.execute('SELECT userid FROM coursesread WHERE lessonid =' + str(L[i]) )
         row = cursor.fetchone()
         while row :
             if int(row[0]) != int(user) and row[0] not in idother :
@@ -326,7 +326,7 @@ def suggusers(user,L,tiers1,tiers2,tiers3,tiers4,nbre): # Fonction de suggestion
     for j in range (len(idother)):
         idcours=[]
         #par id, on selectionne tous les cours qu'il a regardé
-        cursor.execute('SELECT courseid FROM coursesread WHERE userid =' + str(idother[j]))
+        cursor.execute('SELECT lessonid FROM coursesread WHERE userid =' + str(idother[j]))
         row = cursor.fetchone()
         while row :
             idcours.append(row[0])
@@ -348,7 +348,7 @@ def suggusers(user,L,tiers1,tiers2,tiers3,tiers4,nbre): # Fonction de suggestion
         #Meme schéma de code que pour le premier taux.
         for j in range (len(idother)):
             idcours=[]
-            cursor.execute('SELECT courseid FROM coursesread WHERE userid =' + str(idother[j]))
+            cursor.execute('SELECT lessonid FROM coursesread WHERE userid =' + str(idother[j]))
             row = cursor.fetchone()
             while row :
                 idcours.append(row[0])
@@ -391,41 +391,116 @@ def suggusers(user,L,tiers1,tiers2,tiers3,tiers4,nbre): # Fonction de suggestion
     
     return tiers0,tiers1,tiers2,tiers3,tiers4,tmp
 
-def sugglink(L,t1,t2,t3,t4,t5): #Permet d'ajouter et ajuster les tiers selon si un id de cours se trouve dans la catégorie "link" d'un cours regardé
-    cursor =connectcursor()
+def separationid(L): #utile pour les liens, creer une liste remplie d'entiers.
+    print(L)
     n=len(L)
     link=[]
+    i=0
+    j=1
+    arret = 0
+    print(n)
+    while arret ==0:
+        if L[j]!=',' and j < n:
+            j+=1
+        else:
+            link.append(L[i:j])
+            i=j+1
+            j=i+1
+        if j==n:
+            link.append(L[i:j])
+            arret=1
+    for i in range(len(link)):
+        link[i]=int(link[i])
+        if link[i]==0:
+            link.remove(link[i])
+    return link
+
+def ConvStrInt(L):
+    l=[]
+    for i in range (len(L)):
+        l.append(int(L[i]))
+    return l
+
+def sugglink(L,t1,t2,t3,t4,t5): #Permet d'ajouter et ajuster les tiers selon si un id de cours se trouve dans la catégorie "link" d'un cours regardé
+    cursor =connectcursor()
+    L1=ConvStrInt(L)
+    n=len(L)
+    link1=[]
+    link2=[]
     t0=[]
+    
     for i in range(n):
         cursor.execute('SELECT link FROM courses WHERE id =' + str(L[i]))
         row = cursor.fetchone()
-        while row :
-            if row[0] not in link :
-                link.append(row[0])
-            row = cursor.fetchone()
-    for i in range(len(link)):
-        a=link[i]
-        if t1.count(link[i])!=0:
+        if row[0] not in link1 and row[0] !=0 and row[0] not in L1:
+            link1.append(row[0])
+    for i in range(len(t1)):
+        cursor.execute('SELECT link FROM courses WHERE id =' + str(t1[i]))
+        row =cursor.fetchone()
+        if row[0] not in link1 and row[0]!=0 and row[0] not in link2 and row[0] not in L1:
+            link2.append(row[0])
+    for i in range(len(t2)):
+        cursor.execute('SELECT link FROM courses WHERE id =' + str(t2[i]))
+        row =cursor.fetchone()
+        if row[0] not in link1 and row[0]!=0 and row[0] not in link2 and row[0] not in L1:
+            link2.append(row[0])
+    for i in range(len(t3)):
+        cursor.execute('SELECT link FROM courses WHERE id =' + str(t3[i]))
+        row =cursor.fetchone()
+        if row[0] not in link1 and row[0]!=0 and row[0] not in link2 and row[0] not in L1:
+            link2.append(row[0])
+    for i in range(len(t4)):
+        cursor.execute('SELECT link FROM courses WHERE id =' + str(t4[i]))
+        row =cursor.fetchone()
+        if row[0] not in link1 and row[0]!=0 and row[0] not in link2 and row[0] not in L1:
+            link2.append(row[0])
+    for i in range(len(t5)):
+        cursor.execute('SELECT link FROM courses WHERE id =' + str(t5[i]))
+        row =cursor.fetchone()
+        if row[0] not in link1 and row[0]!=0 and row[0] not in link2 and row[0] not in L1:
+            link2.append(row[0])
+            
+    for i in range(len(link2)):
+        a=link2[i]
+        if t1.count(link2[i])!=0:
                 t1.remove(a)
                 t0.append(a)
         else:
-            if t2.count(link[i])!=0:
+            if t2.count(link2[i])!=0:
                 t2.remove(a)
                 t1.append(a)
             else:
-                if t3.count(link[i])!=0:
+                if t3.count(link2[i])!=0:
                     t3.remove(a)
                     t2.append(a)
                 else:
-                    if t4.count(link[i])!=0:
+                    if t4.count(link2[i])!=0:
                         t4.remove(a)
                         t3.append(a)
                     else:
-                        if t5.count(link[i])!=0:
+                        if t5.count(link2[i])!=0:
                             t5.remove(a)
                             t4.append(a)
                         else:
                             t5.append(a)
+    for i in range(len(link1)):
+        a=link1[i]
+        t0.append(a)
+        if t1.count(link1[i])!=0:
+                t1.remove(a)
+        else:
+            if t2.count(link1[i])!=0:
+                t2.remove(a)
+            else:
+                if t3.count(link1[i])!=0:
+                    t3.remove(a)
+                else:
+                    if t4.count(link1[i])!=0:
+                        t4.remove(a)
+                    else:
+                        if t5.count(link1[i])!=0:
+                            t5.remove(a)
+    
     return t0,t1,t2,t3,t4,t5
        
 def flang(L):
@@ -565,9 +640,11 @@ def suggestion(user,nbre):
     
     # sugestion user
     t1,t2,t3,t4,t5,tmp= suggusers(user,L,t1,t2,t3,t4,nbre)
+    #print(t1,t2,t3,t4,t5)
     
     #Link T6
     t1,t2,t3,t4,t5,t6=sugglink(L,t1,t2,t3,t4,t5)
+    print(t1,t2,t3,t4,t5,t6)
     
     #tri (Lang cat tag // Studies lvl date decréation ?)
     t1=tri(L,t1)
@@ -576,8 +653,8 @@ def suggestion(user,nbre):
     t4=tri(L,t4)
     t5=tri(L,t5)
     t6=tri(L,t6)
-    
-    
+    print(t1,t2,t3,t4,t5,t6)
+    """
     ### Résultat selon le nombre de suggestion
     res=[]
     a=0
@@ -614,12 +691,12 @@ def suggestion(user,nbre):
                                 res.append(t6[a-l1-l2-l3-l4-l5])
                                 a+=1
                             else:
-                                nbre=len(res)-1
-    return res
+                                nbre=len(res)-1"""
+    #return res
     
-"""
+
 x=str(input("id de la personne ="))
 
 nbre=int(input('Nombre de suggestion ='))
 
-print(suggestion(x,nbre))"""
+suggestion(x,nbre)
