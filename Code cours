@@ -113,16 +113,27 @@ def separationmots(L): #utile pour les tags, creer une liste remplie de chaines 
     return mots
 
 def ftags(L):#Meme code que pour les catégories mais cette fois-ci pour les tags
-    n=len(L)
-    t1=[] 
-    cursor =connectcursor()
-    for i in range (n): 
-        cursor.execute("SELECT tags FROM courses WHERE id=" + L[i])
+    if type(L)==int:
+        n=1
+        t1=[] 
+        cursor =connectcursor()
+        cursor.execute("SELECT tags FROM courses WHERE id=" + str(L))
         row = cursor.fetchone()
         R=separationmots(row[0])
         for j in range (len(R)):
             if R[j] not in t1:
                 t1.append(R[j])
+    else:
+        n=len(L)
+        t1=[] 
+        cursor =connectcursor()
+        for i in range (n): 
+            cursor.execute("SELECT tags FROM courses WHERE id=" + L[i])
+            row = cursor.fetchone()
+            R=separationmots(row[0])
+            for j in range (len(R)):
+                if R[j] not in t1:
+                    t1.append(R[j])
 
     return t1
 
@@ -391,30 +402,6 @@ def suggusers(user,L,tiers1,tiers2,tiers3,tiers4,nbre): # Fonction de suggestion
     
     return tiers0,tiers1,tiers2,tiers3,tiers4,tmp
 
-def separationid(L): #utile pour les liens, creer une liste remplie d'entiers.
-    print(L)
-    n=len(L)
-    link=[]
-    i=0
-    j=1
-    arret = 0
-    print(n)
-    while arret ==0:
-        if L[j]!=',' and j < n:
-            j+=1
-        else:
-            link.append(L[i:j])
-            i=j+1
-            j=i+1
-        if j==n:
-            link.append(L[i:j])
-            arret=1
-    for i in range(len(link)):
-        link[i]=int(link[i])
-        if link[i]==0:
-            link.remove(link[i])
-    return link
-
 def ConvStrInt(L):
     l=[]
     for i in range (len(L)):
@@ -644,7 +631,7 @@ def suggestion(user,nbre):
     
     #Link T6
     t1,t2,t3,t4,t5,t6=sugglink(L,t1,t2,t3,t4,t5)
-    print(t1,t2,t3,t4,t5,t6)
+    #print(t1,t2,t3,t4,t5,t6)
     
     #tri (Lang cat tag // Studies lvl date decréation ?)
     t1=tri(L,t1)
@@ -653,50 +640,52 @@ def suggestion(user,nbre):
     t4=tri(L,t4)
     t5=tri(L,t5)
     t6=tri(L,t6)
-    print(t1,t2,t3,t4,t5,t6)
-    """
+    
     ### Résultat selon le nombre de suggestion
     res=[]
-    a=0
-    l1=len(t1)
-    l2=len(t2)
-    l3=len(t3)
-    l4=len(t4)
-    l5=len(t5)
-    l6=len(t6)
-    #Remplissage de la liste des suggestions où le premier cours correspond à la suggestion la plus importante
     
-    while len(res)<nbre:
-        if a<l1:
-            res.append(t1[a])
-            a+=1
-        else:
-            if a-l1<l2:
-                res.append(t2[a-l1])
+    #Remplissage de la liste des suggestions où le premier cours correspond à la suggestion la plus importante
+    if tmp!=0:
+        a=0
+        l1=len(t1)
+        l2=len(t2)
+        l3=len(t3)
+        l4=len(t4)
+        l5=len(t5)
+        l6=len(t6)
+        while len(res)<nbre:
+            if a<l1:
+                res.append(t1[a])
                 a+=1
             else:
-                if a-l1-l2<l3:
-                    res.append(t3[a-l1-l2])
+                if a-l1<l2:
+                    res.append(t2[a-l1])
                     a+=1
                 else:
-                    if a-l1-l2-l3<l4:
-                        res.append(t4[a-l1-l2-l3])
+                    if a-l1-l2<l3:
+                        res.append(t3[a-l1-l2])
                         a+=1
                     else:
-                        if a-l1-l2-l3-l4<l5:
-                            res.append(t5[a-l1-l2-l3-l4])
+                        if a-l1-l2-l3<l4:
+                            res.append(t4[a-l1-l2-l3])
                             a+=1
                         else:
-                            if a-l1-l2-l3-l4-l5<l6:
-                                res.append(t6[a-l1-l2-l3-l4-l5])
+                            if a-l1-l2-l3-l4<l5:
+                                res.append(t5[a-l1-l2-l3-l4])
                                 a+=1
                             else:
-                                nbre=len(res)-1"""
-    #return res
+                                if a-l1-l2-l3-l4-l5<l6:
+                                    res.append(t6[a-l1-l2-l3-l4-l5])
+                                    a+=1
+                                else:
+                                    nbre=len(res)-1
+    else:
+        res=t1+t2+t3+t4+t5+t6
+    return res
     
 
 x=str(input("id de la personne ="))
 
 nbre=int(input('Nombre de suggestion ='))
 
-suggestion(x,nbre)
+print(suggestion(x,nbre))
