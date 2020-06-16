@@ -1,14 +1,13 @@
 import pymysql.cursors
 import numpy as np
 from datetime import timedelta
-import calendar as cal
-
+#pip freeze > requirements.txt
 def connectcursor():
     conn = pymysql.connect(host='localhost',
                              user='root',
                              port='',
                              password='',
-                             database='stage')
+                             database='vidéos')
     cursor = conn.cursor()
     return cursor
 
