@@ -1,7 +1,7 @@
 import pymysql.cursors
 import numpy as np
 from datetime import timedelta
-
+#pip freeze > requirementscodecours.txt
 def connectcursor():
     conn = pymysql.connect(host='localhost',
                              user='root',
@@ -610,6 +610,11 @@ def tri(L,tiers):
         a+=1
     return tiers
 
+def ConvIntStr(L):
+    n=len(L)
+    for i in range (n):
+        L[i]=str(L[i])
+    return L
 
 def suggestion(user,nbre):
     L=history(user) #historique
@@ -681,11 +686,13 @@ def suggestion(user,nbre):
                                     nbre=len(res)-1
     else:
         res=t1+t2+t3+t4+t5+t6
+    res=ConvIntStr(res)
     return res
     
 
-x=str(input("id de la personne ="))
+"""x=str(input("id de la personne ="))
 
 nbre=int(input('Nombre de suggestion ='))
 
 print(suggestion(x,nbre))
+"""
