@@ -327,6 +327,27 @@ def suggusers(user,L,tiers1,tiers2,tiers3,tiers4,nbre): # Fonction de suggestion
     taux=round((4/5)*n)#sert à fixer un minimum de cours en commun 
     cours=[]
     idother=[]
+    coursint=[]
+    #On va prendre les cours que les mêmes personnes de la promo ont vu
+    cursor.execute('SELECT study FROM users WHERE id=' + user)
+    intitule=cursor.fetchone()[0]
+    if intitule != '':
+        cursor.execute('SELECT levelofstudy FROM users WHERE id=' + user)
+        lvl=cursor.fetchone()[0]
+        if lvl != '0':
+            idint=[]
+            cursor.execute('SELECT id FROM users WHERE study LIKE \'%' + intitule + '%\'  and levelofstudy LIKE \'%' + lvl + '%\'')
+            row = cursor.fetchone()
+            while row :
+                idint.append(row[0])
+                row = cursor.fetchone()
+            for i in range (len(idint)):
+                cursor.execute('SELECT lessonid FROM coursesread WHERE userid='+str(idint[i]))
+                row = cursor.fetchone()
+                while row :
+                    coursint.append(row[0])
+                    row = cursor.fetchone()
+    
     for i in range(n):
         cursor.execute('SELECT userid FROM coursesread WHERE lessonid =' + str(L[i]) )
         row = cursor.fetchone()
@@ -350,7 +371,7 @@ def suggusers(user,L,tiers1,tiers2,tiers3,tiers4,nbre): # Fonction de suggestion
                 idcours.remove(int(L[k]))
         if a>=taux: #si a est plus grand que le taux, on peut ajouter ces cours a la suggestion
             cours.extend(idcours)
-    cours=list(set(cours))
+    cours=list(set(cours+coursint))
     t=0
     t1=[3/4,2/3,1/2] #peut changer. C'est les différents taux qu'on prendra pour essayer d'avoir le nombre de suggestion voulu
     while  t<len(t1)  and CompteID(cours,tiers1,tiers2,tiers3,tiers4)<nbre: #s'arrete si on obtient le nombre de suggestion voulu, ou si on sort de la liste des taux
@@ -526,7 +547,7 @@ def flang(L):
         
     return lang2,a
  
-def tri(L,tiers):
+def tri(user,L,tiers):
     cursor =connectcursor()
     #Catégorie et sous-catégories dominante, t et st seront les compteurs de ces cat et sub cat dominante 
     cat,catnbr,t=fcat(L)
@@ -597,6 +618,56 @@ def tri(L,tiers):
                 if tag[j]==tags[k]:
                     adj[i]+=1
     
+    #On va prendre en compte les études.
+    cursor.execute('SELECT study FROM users WHERE id=' + user)
+    intitule=cursor.fetchone()[0]
+    idint=[]
+    if intitule != '':
+        cursor.execute('SELECT id FROM users WHERE study LIKE \'%' + intitule + '%\'')
+        row=cursor.fetchone()
+        while row:
+            if row[0]!=user and row[0] not in idint :
+                idint.append(row[0])
+            row = cursor.fetchone()
+        if len(idint)!=0:
+            for i in range(n):
+                idcours=[]
+                cursor.execute('SELECT id FROM coursesread WHERE lessonid =' + str(tiers[i]))
+                row=cursor.fetchone()
+                while row:
+                    if id !=user and row[0] not in idcours:
+                        idcours.append(row[0])
+                    row=cursor.fetchone()
+                for j in range(len(idint)):
+                    if idint[j] in idcours:
+                        adj[i]+=1
+                        
+    #On va prendre en compte l'année d'étude
+    
+    cursor.execute('SELECT levelofstudy FROM users WHERE id=' + user)
+    lvl=cursor.fetchone()[0]
+    idlvl=[]
+    if lvl != '0':
+        cursor.execute('SELECT id FROM users WHERE levelofstudy =' + lvl)
+        row=cursor.fetchone()
+        while row:
+            if row[0]!=user and row[0] not in idint :
+                idlvl.append(row[0])
+            row = cursor.fetchone()
+        if len(idlvl)!=0:
+            for i in range(n):
+                idcours=[]
+                cursor.execute('SELECT id FROM coursesread WHERE lessonid =' + str(tiers[i]))
+                row=cursor.fetchone()
+                while row:
+                    if id !=user and row[0] not in idcours:
+                        idcours.append(row[0])
+                    row=cursor.fetchone()
+                for j in range(len(idlvl)):
+                    if idlvl[j] in idcours:
+                        adj[i]+=1
+        
+        
     #A voir si le niveau d'étude et les études concernées peuvent etre pris en compte
     a=0
     while a<len(tiers):
@@ -616,7 +687,157 @@ def ConvIntStr(L):
         L[i]=str(L[i])
     return L
 
-def suggestion(user,nbre):
+def tridoublon(liste):
+    l1=[]
+    l2=[]
+    for i in range (len(liste)):
+        if liste[i] not in l1:
+            l1.append(liste[i])
+            l2.append(liste.count(liste[i]))
+    a=0
+    while a<len(l1):
+        b=a-1
+        while b>=0 and l2[a]>l2[b]:
+            tmp,tmp1=l1[a],l2[a]
+            l1[a],l2[a]=l1[b],l2[b]
+            l1[b],l2[b]=tmp,tmp1
+            a=b
+            b-=1
+        a+=1
+    return l1
+
+def suggwithouthist(user,nbre):
+    cursor =connectcursor()
+    cursor.execute('SELECT study FROM users WHERE id=' + user)
+    row = cursor.fetchone()
+    liste1=[]
+    liste2=[]
+    liste3=[]
+    if row[0] == '':
+        cursor.execute('SELECT levelofstudy FROM users WHERE id=' + user)
+        row = cursor.fetchone()
+        if row[0] == '0':
+            #Cas où l'année d'étude n'est pas entre 1 et 5 et que l'intitulé des études n'est pas dans la base de données
+            cursor.execute('SELECT lessonid FROM coursesread')
+            row = cursor.fetchone()
+            while row :
+                liste1.append(row[0])
+                row = cursor.fetchone()
+        else:
+            #cas où l'année d'étude est indiquée mais pas l'intitulé
+            idlvl=[]
+            cursor.execute('SELECT id FROM users WHERE levelofstudy='+row[0])
+            row = cursor.fetchone()
+            while row :
+                idlvl.append(row[0])
+                row = cursor.fetchone()
+            
+            cursor.execute('SELECT lessonid FROM coursesread ')
+            row = cursor.fetchone()
+            while row :
+                liste2.append(row[0])
+                row = cursor.fetchone()
+            
+            for j in range(len(liste2)):
+                cursor.execute('SELECT userid FROM coursesread WHERE lessonid='+str(liste2[j]))
+                row = cursor.fetchone()
+                while row :
+                    if row[0] in idlvl:
+                        liste1.append(liste2[j])
+                        del liste2[j]
+                        row = cursor.fetchone()
+    else :
+        intitule=row[0]
+        cursor.execute('SELECT levelofstudy FROM users WHERE id=' + user)
+        row = cursor.fetchone()
+        if row[0] == '0':
+            #Cas où il y a un intitulé mais pas de niveau d'étude
+            idint=[]
+            cursor.execute('SELECT id FROM users WHERE study='+intitule)
+            row = cursor.fetchone()
+            while row :
+                idint.append(row[0])
+                row = cursor.fetchone()
+            
+            cursor.execute('SELECT lessonid FROM coursesread ')
+            row = cursor.fetchone()
+            while row :
+                liste2.append(row[0])
+                row = cursor.fetchone()
+            
+            for j in range(len(liste2)):
+                cursor.execute('SELECT userid FROM coursesread WHERE lessonid='+str(liste2[j]))
+                row = cursor.fetchone()
+                while row :
+                    if row[0] in idint:
+                        liste1.append(liste2[j])
+                        del liste2[j]
+                    row = cursor.fetchone()
+        else :
+            #Cas où il y a un intitulé et un niveau d'étude
+            lvl=row[0]
+            idintlvl=[]
+            idint=[]
+            cursor.execute('SELECT id FROM users WHERE study LIKE \'%' + intitule + '%\'')
+            row = cursor.fetchone()
+            while row :
+                idint.append(row[0])
+                row = cursor.fetchone()
+            
+            cursor.execute('SELECT id FROM users WHERE study LIKE \'%' + intitule + '%\'  and levelofstudy LIKE \'%' + lvl + '%\'')
+            row = cursor.fetchone()
+            while row :
+                idint.remove(row[0])
+                idintlvl.append(row[0])
+                row = cursor.fetchone()
+                
+            cursor.execute('SELECT lessonid FROM coursesread ')
+            row = cursor.fetchone()
+            while row :
+                liste3.append(row[0])
+                row = cursor.fetchone()
+            j=0    
+            while j <len(liste3):
+                cursor.execute('SELECT userid FROM coursesread WHERE lessonid='+str(liste3[j]))
+                row = cursor.fetchone()
+                a=0
+                while row :
+                    if row[0] in idint:
+                        liste2.append(liste3[j])
+                        del liste3[j]
+                        a=1
+                    if row[0] in idintlvl:
+                        liste1.append(liste3[j])
+                        del liste3[j]
+                        a=1
+                    row = cursor.fetchone()
+                if a==0:
+                    j+=1
+    
+    liste1=tridoublon(liste1)
+    liste2=tridoublon(liste2)
+    liste3=tridoublon(liste3)
+    
+    Sugg=[]
+    a=len(liste1)+len(liste2)+len(liste3)
+    i=0
+    l1=len(liste1)
+    l2=len(liste2)
+    while len(Sugg)<nbre and i<a:
+        if i <l1:
+            Sugg.append(liste1[i])
+            i+=1
+        else:
+            if i<l1+l2:
+                Sugg.append(liste2[i-l1])
+                i+=1
+            else:
+                Sugg.append(liste3[i-l1-l2])
+                i+=1
+    return Sugg
+
+
+def suggwithhist(user,nbre):
     L=history(user) #historique
     ha,hr=separationcours(user,L) #séparation de l'historique selon les dates de visionnages, hr=historique récent, ha=historique ancien
     
@@ -639,12 +860,12 @@ def suggestion(user,nbre):
     #print(t1,t2,t3,t4,t5,t6)
     
     #tri (Lang cat tag // Studies lvl date decréation ?)
-    t1=tri(L,t1)
-    t2=tri(L,t2)
-    t3=tri(L,t3)
-    t4=tri(L,t4)
-    t5=tri(L,t5)
-    t6=tri(L,t6)
+    t1=tri(user,L,t1)
+    t2=tri(user,L,t2)
+    t3=tri(user,L,t3)
+    t4=tri(user,L,t4)
+    t5=tri(user,L,t5)
+    t6=tri(user,L,t6)
     
     ### Résultat selon le nombre de suggestion
     res=[]
@@ -688,9 +909,16 @@ def suggestion(user,nbre):
         res=t1+t2+t3+t4+t5+t6
     res=ConvIntStr(res)
     return res
-    
 
-"""x=str(input("id de la personne ="))
+def suggestion(user,nbre):
+    L=history(user)
+    if len(L)==0:
+        res=suggwithouthist(user,nbre)
+    else:
+        res=suggwithhist(user,nbre)
+    return res    
+"""
+x=str(input("id de la personne ="))
 
 nbre=int(input('Nombre de suggestion ='))
 
