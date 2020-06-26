@@ -318,6 +318,27 @@ def suggestionusers(user,L,tiers2,tiers3,tiers4,nbre): # Fonction de suggestions
     taux=round((4/5)*n)#sert à fixer un minimum de vidéos en commun 
     vid=[]
     idother=[]
+    vidint=[]
+    #On va prendre les vidéos que les mêmes personnes de la promo ont vu
+    cursor.execute('SELECT study FROM users WHERE id=' + user)
+    intitule=cursor.fetchone()[0]
+    if intitule != '':
+        cursor.execute('SELECT levelofstudy FROM users WHERE id=' + user)
+        lvl=cursor.fetchone()[0]
+        if lvl != '0':
+            idint=[]
+            cursor.execute('SELECT id FROM users WHERE study LIKE \'%' + intitule + '%\'  and levelofstudy LIKE \'%' + lvl + '%\'')
+            row = cursor.fetchone()
+            while row :
+                idint.append(row[0])
+                row = cursor.fetchone()
+            for i in range (len(idint)):
+                cursor.execute('SELECT videoid FROM videosread WHERE userid='+str(idint[i]))
+                row = cursor.fetchone()
+                while row :
+                    vidint.append(row[0])
+                    row = cursor.fetchone()
+        
     for i in range(n):
         cursor.execute('SELECT userid FROM videosread WHERE videoid =' + str(L[i]) )
         row = cursor.fetchone()
@@ -341,7 +362,7 @@ def suggestionusers(user,L,tiers2,tiers3,tiers4,nbre): # Fonction de suggestions
                 idvid.remove(int(L[k]))
         if a>=taux: #si a est plus grand que le taux, on peut ajouter ces vidéos a la suggestion
             vid.extend(idvid)
-    vid=list(set(vid))
+    vid=list(set(vid+vidint))
     t=0
     t1=[3/4,2/3,1/2] #peut changer. C'est les différents taux qu'on prendra pour essayer d'avoir le nombre de suggestion voulu
     while  t<len(t1)  and CompteID(vid,tiers2,tiers3,tiers4)<nbre: #s'arrete si on obtient le nombre de suggestion voulu, ou si on sort de la liste des taux
@@ -552,7 +573,156 @@ def Fusion(t1,t2,T1,T2): #Fusion des 4 listes crées en 3, car les vidéos sugg�
             t3.append(T2[i])   
     return t1,t2,t3
 
-def suggestion(user,nbre):
+def tridoublon(liste):
+    l1=[]
+    l2=[]
+    for i in range (len(liste)):
+        if liste[i] not in l1:
+            l1.append(liste[i])
+            l2.append(liste.count(liste[i]))
+    a=0
+    while a<len(l1):
+        b=a-1
+        while b>=0 and l2[a]>l2[b]:
+            tmp,tmp1=l1[a],l2[a]
+            l1[a],l2[a]=l1[b],l2[b]
+            l1[b],l2[b]=tmp,tmp1
+            a=b
+            b-=1
+        a+=1
+    return l1
+    
+def suggwithouthist(user,nbre):
+    cursor =connectcursor()
+    cursor.execute('SELECT study FROM users WHERE id=' + user)
+    row = cursor.fetchone()
+    liste1=[]
+    liste2=[]
+    liste3=[]
+    if row[0] == '':
+        cursor.execute('SELECT levelofstudy FROM users WHERE id=' + user)
+        row = cursor.fetchone()
+        if row[0] == '0':
+            #Cas où l'année d'étude n'est pas entre 1 et 5 et que l'intitulé des études n'est pas dans la base de données
+            cursor.execute('SELECT videoid FROM videosread')
+            row = cursor.fetchone()
+            while row :
+                liste1.append(row[0])
+                row = cursor.fetchone()
+        else:
+            #cas où l'année d'étude est indiquée mais pas l'intitulé
+            idlvl=[]
+            cursor.execute('SELECT id FROM users WHERE levelofstudy='+row[0])
+            row = cursor.fetchone()
+            while row :
+                idlvl.append(row[0])
+                row = cursor.fetchone()
+            
+            cursor.execute('SELECT videoid FROM videosread ')
+            row = cursor.fetchone()
+            while row :
+                liste2.append(row[0])
+                row = cursor.fetchone()
+            
+            for j in range(len(liste2)):
+                cursor.execute('SELECT userid FROM videosread WHERE videoid='+str(liste2[j]))
+                row = cursor.fetchone()
+                while row :
+                    if row[0] in idlvl:
+                        liste1.append(liste2[j])
+                        del liste2[j]
+                        row = cursor.fetchone()
+    else :
+        intitule=row[0]
+        cursor.execute('SELECT levelofstudy FROM users WHERE id=' + user)
+        row = cursor.fetchone()
+        if row[0] == '0':
+            #Cas où il y a un intitulé mais pas de niveau d'étude
+            idint=[]
+            cursor.execute('SELECT id FROM users WHERE study='+intitule)
+            row = cursor.fetchone()
+            while row :
+                idint.append(row[0])
+                row = cursor.fetchone()
+            
+            cursor.execute('SELECT videoid FROM videosread ')
+            row = cursor.fetchone()
+            while row :
+                liste2.append(row[0])
+                row = cursor.fetchone()
+            
+            for j in range(len(liste2)):
+                cursor.execute('SELECT userid FROM videosread WHERE videoid='+str(liste2[j]))
+                row = cursor.fetchone()
+                while row :
+                    if row[0] in idint:
+                        liste1.append(liste2[j])
+                        del liste2[j]
+                    row = cursor.fetchone()
+        else :
+            #Cas où il y a un intitulé et un niveau d'étude
+            lvl=row[0]
+            idintlvl=[]
+            idint=[]
+            cursor.execute('SELECT id FROM users WHERE study LIKE \'%' + intitule + '%\'')
+            row = cursor.fetchone()
+            while row :
+                idint.append(row[0])
+                row = cursor.fetchone()
+            
+            cursor.execute('SELECT id FROM users WHERE study LIKE \'%' + intitule + '%\'  and levelofstudy LIKE \'%' + lvl + '%\'')
+            row = cursor.fetchone()
+            while row :
+                idint.remove(row[0])
+                idintlvl.append(row[0])
+                row = cursor.fetchone()
+                
+            cursor.execute('SELECT videoid FROM videosread ')
+            row = cursor.fetchone()
+            while row :
+                liste3.append(row[0])
+                row = cursor.fetchone()
+            j=0    
+            while j <len(liste3):
+                cursor.execute('SELECT userid FROM videosread WHERE videoid='+str(liste3[j]))
+                row = cursor.fetchone()
+                a=0
+                while row :
+                    if row[0] in idint:
+                        liste2.append(liste3[j])
+                        del liste3[j]
+                        a=1
+                    if row[0] in idintlvl:
+                        liste1.append(liste3[j])
+                        del liste3[j]
+                        a=1
+                    row = cursor.fetchone()
+                if a==0:
+                    j+=1
+    
+    liste1=tridoublon(liste1)
+    liste2=tridoublon(liste2)
+    liste3=tridoublon(liste3)
+    
+    Sugg=[]
+    a=len(liste1)+len(liste2)+len(liste3)
+    i=0
+    l1=len(liste1)
+    l2=len(liste2)
+    while len(Sugg)<nbre and i<a:
+        if i <l1:
+            Sugg.append(liste1[i])
+            i+=1
+        else:
+            if i<l1+l2:
+                Sugg.append(liste2[i-l1])
+                i+=1
+            else:
+                Sugg.append(liste3[i-l1-l2])
+                i+=1
+    return Sugg
+
+def suggwithhist(user,nbre):
     
     L=videoread(user) #historique
     va,vr=Separationvideosdate(user,L) #séparation de l'historique
@@ -634,9 +804,19 @@ def suggestion(user,nbre):
     res=ConvIntStr(res)
     return res
 
-
+def suggestion(user,nbre):
+    L=videoread(user)
+    if len(L)==0:
+        res=suggwithouthist(user,nbre)
+    else:
+        res=suggwithhist(user,nbre)
+    return res
+     
+"""    
 x=str(input("id de la personne ="))
 
 nbre=int(input('Nombre de suggestion ='))
 
 print(suggestion(x,nbre))
+"""
+
