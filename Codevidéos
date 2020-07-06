@@ -87,24 +87,41 @@ def Separationvideosdate(x,vr): #sépare une liste d'id de vidéos selon la date
 def fcategory(L):
     cursor =connectcursor()
     n=len(L)
-    c=[] #Toutes les catégories avec doublons
+    c1=[] #Toutes les catégories avec doublons
+    c2=[]
+    c3=[]
     #Remplissage de c1,c2,c3
     for i in range (n): 
         cursor.execute("SELECT category FROM videos WHERE id=" + str(L[i]))
         row = cursor.fetchone()
-        c.append(row[0])
-    
-    c1=tridoublon(c)
-
+        c1.append(row[0])
+    for i in range(n):
+        if c1[i] not in c2:
+            c2.append(c1[i])
+            c3.append(c1.count(c1[i]))
+    #Tri de c2 selon le nombre de doublons
+    a=0
+    while a<len(c2):
+        b=a-1
+        while b>=0 and c3[a]>c3[b]:
+            tmp,tmp1=c2[a],c3[a]
+            c2[a],c3[a]=c2[b],c3[b]
+            c2[b],c3[b]=tmp,tmp1
+            a=b
+            b-=1
+        a+=1
     #donne a, qui est le nombre de catégories dominantes (avec le plus de doublons)
-    if len(c)==len(c1) :
-        a=len(c)
+    if len(c1)==len(c2) :
+        a=len(c1)
     else:
         a=1
-        while a< len(c2) and c2[0]==c2[a]:
+        while a< len(c1) and c1[0]==c1[a]:
             a+=1
         
+    return c2,c3,a
+        
     return c1,a
+
 
 
 def separationmots(L): #utile pour les tags, creer une liste remplie de chaines de caractère. chacune représente un mot 
