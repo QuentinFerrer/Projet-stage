@@ -82,34 +82,19 @@ def Separationvideosdate(x,vr): #sépare une liste d'id de vidéos selon la date
     return v[0:ind],v[ind:n]
 
 
-### Fonction qui récupère des données selon une liste d'id de vidéo ###
+### Fonctions qui récupère des données selon une liste d'id de vidéo ###
 
 def fcategory(L):
     cursor =connectcursor()
     n=len(L)
     c=[] #Toutes les catégories avec doublons
-    c1=[] #Toutes les catégories sans doublons
-    c2=[] #Compte le nombre de doublons dans c1, par rapport a c2
     #Remplissage de c1,c2,c3
     for i in range (n): 
         cursor.execute("SELECT category FROM videos WHERE id=" + str(L[i]))
         row = cursor.fetchone()
         c.append(row[0])
-    for i in range(n):
-        if c[i] not in c1:
-            c1.append(c[i])
-            c2.append(c.count(c[i])) 
-     #Tri de c2 selon le nombre de doublons
-    a=0
-    while a<len(c1):
-        b=a-1
-        while b>=0 and c2[a]>c2[b]:
-            tmp,tmp1=c1[a],c2[a]
-            c1[a],c2[a]=c1[b],c2[b]
-            c1[b],c2[b]=tmp,tmp1
-            a=b
-            b-=1
-        a+=1
+    
+    c1=tridoublon(c)
 
     #donne a, qui est le nombre de catégories dominantes (avec le plus de doublons)
     if len(c)==len(c1) :
@@ -573,7 +558,7 @@ def Fusion(t1,t2,T1,T2): #Fusion des 4 listes crées en 3, car les vidéos sugg�
             t3.append(T2[i])   
     return t1,t2,t3
 
-def tridoublon(liste):
+def tridoublon(liste): #A partir d'une liste, cette fonction ressort une liste sans doublons, triée selon ces derniers.
     l1=[]
     l2=[]
     for i in range (len(liste)):
@@ -592,7 +577,7 @@ def tridoublon(liste):
         a+=1
     return l1
     
-def suggwithouthist(user,nbre):
+def suggwithouthist(user,nbre):#Lorsqu'il n'y a pas d'historique.
     cursor =connectcursor()
     cursor.execute('SELECT study FROM users WHERE id=' + user)
     row = cursor.fetchone()
